@@ -2,6 +2,7 @@ require('dotenv').config();
 const app = require('./app');
 const { connectDB } = require('./config/database');
 const { connectRedis } = require('./config/redis');
+const { verifyEmailConnection } = require('./config/email');
 const seedData = require('./scripts/seedData');
 
 const PORT = process.env.PORT || 5000;
@@ -10,6 +11,7 @@ const startServer = async () => {
     try {
         await connectDB();
         await connectRedis();
+        await verifyEmailConnection();
         
         await seedData();
         

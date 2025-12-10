@@ -1,5 +1,6 @@
 const { getDB } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
+const { sendUserCreatedEmail, sendProfileUpdatedEmail } = require('../../services/emailService');
 
 const getUsers = async (req, res) => {
     try {
@@ -155,6 +156,8 @@ const createUser = async (req, res) => {
             _id: result.insertedId
         };
 
+        sendUserCreatedEmail(newUser, created_by);
+
         res.status(201).json({
             success: true,
             message: 'User created successfully',
@@ -262,6 +265,11 @@ const updateUser = async (req, res) => {
             { user_id },
             { $set: updateData }
         );
+
+        const updatedUser = await db.collection('users').findOne({ user_id });
+        if (updatedUser) {
+            sendProfileUpdatedEmail(updatedUser, updateData);
+        }
 
         res.json({
             success: true,

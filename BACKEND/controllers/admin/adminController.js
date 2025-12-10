@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 const { getDB } = require('../../config/database');
+const { sendLoginEmail, sendProfileUpdatedEmail } = require('../../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
@@ -34,6 +35,8 @@ const login = async (req, res) => {
             user_id: admin.user_id || null, 
             email: admin.email 
         }, JWT_SECRET, { expiresIn: '1d' });
+
+        sendLoginEmail(admin);
 
         return res.status(200).json({
             success: true,
@@ -148,6 +151,8 @@ const updateProfile = async (req, res) => {
             ...updatedAdmin,
             password: undefined
         };
+
+        sendProfileUpdatedEmail(updatedAdmin, updateData);
 
         return res.status(200).json({
             success: true,
