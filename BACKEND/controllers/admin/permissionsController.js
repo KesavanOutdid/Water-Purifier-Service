@@ -6,14 +6,7 @@ const MODULES = [
         module: 'dashboard',
         actions: ['create', 'view', 'update', 'delete']
     },
-    {
-        module: 'catalogue_management',
-        submodules: [
-            { name: 'manage_manufacturers', actions: ['create', 'view', 'update', 'delete'] },
-            { name: 'manage_categories', actions: ['create', 'view', 'update', 'delete'] },
-            { name: 'manage_products', actions: ['create', 'view', 'update', 'delete'] }
-        ]
-    },
+   
     {
         module: 'user_management',
         submodules: [
@@ -21,17 +14,11 @@ const MODULES = [
             { name: 'manage_users', actions: ['create', 'view', 'update', 'delete'] }
         ]
     },
-    {
-        module: 'order_management',
-        submodules: [
-            { name: 'manage_orders', actions: ['create', 'view', 'update', 'delete'] }
-        ]
-    },
+    
     {
         module: 'profile',
-        submodules: [
-            { name: 'account_settings', actions: ['update', 'view'] }
-        ]
+               actions: ['create', 'view', 'update', 'delete']
+
     }
 ];
 
