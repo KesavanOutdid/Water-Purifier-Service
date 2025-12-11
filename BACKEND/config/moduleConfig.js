@@ -1,20 +1,26 @@
 const MODULES = [
     {
-        module: 'dashboard',
-        actions: ['create', 'view', 'update', 'delete']
+        module: "dashboard",
+        actions: ["create", "view", "update", "delete"]
     },
-   
+
     {
-        module: 'user_management',
+        module: "management",
         submodules: [
-            { name: 'manage_roles', actions: ['create', 'view', 'update', 'delete'] },
-            { name: 'manage_users', actions: ['create', 'view', 'update', 'delete'] }
+            {
+                name: "Manage Users",
+                actions: ["create", "view", "update", "delete"]
+            },
+            {
+                name: "Manage Roles",
+                actions: ["create", "view", "update", "delete"]
+            }
         ]
     },
-    
+
     {
-        module: 'profile',
-        actions: ['create', 'view', 'update', 'delete']
+        module: "settings",
+        actions: ["create", "view", "update", "delete"]
     }
 ];
 
