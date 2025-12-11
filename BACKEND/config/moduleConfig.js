@@ -1,25 +1,41 @@
 const MODULES = [
     {
-        module: "dashboard",
+        module: "Dashboard",
         actions: ["create", "view", "update", "delete"]
     },
 
+    // MANAGEMENT MODULES
     {
-        module: "management",
-        submodules: [
-            {
-                name: "Manage Users",
-                actions: ["create", "view", "update", "delete"]
-            },
-            {
-                name: "Manage Roles",
-                actions: ["create", "view", "update", "delete"]
-            }
-        ]
+        module: "Manage Users",
+        actions: ["create", "view", "update", "delete"]
+    },
+    {
+        module: "Manage Roles",
+        actions: ["create", "view", "update", "delete"]
     },
 
+    // OTHER SEPARATE MODULES
     {
-        module: "settings",
+        module: "Manage Models",
+        actions: ["create", "view", "update", "delete"]
+    },
+    {
+        module: "Manage Devices",
+        actions: ["create", "view", "update", "delete"]
+    },
+    {
+        module: "Manage Installation",
+        actions: ["create", "view", "update", "delete"]
+    },
+    {
+        module: "Manage Service",
+        actions: ["create", "view", "update", "delete"]
+    },
+
+   
+
+    {
+        module: "Settings",
         actions: ["create", "view", "update", "delete"]
     }
 ];
