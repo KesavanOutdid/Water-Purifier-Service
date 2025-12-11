@@ -29,14 +29,9 @@ const getUsers = async (req, res) => {
             .limit(limit)
             .toArray();
 
-        const usersWithoutPassword = users.map(user => ({
-            ...user,
-            password: undefined
-        }));
-
         res.json({
             success: true,
-            data: usersWithoutPassword
+            data: users
         });
     } catch (error) {
         res.status(500).json({
@@ -120,6 +115,37 @@ const createUser = async (req, res) => {
             });
         }
 
+        let distributor_name = null;
+        let local_distributor_name = null;
+
+        if (distributor) {
+            const distributorUser = await db.collection('users').findOne({ 
+                user_id: distributor, 
+                status: true 
+            });
+            if (!distributorUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Distributor not found'
+                });
+            }
+            distributor_name = distributorUser.name;
+        }
+
+        if (local_distributor) {
+            const localDistributorUser = await db.collection('users').findOne({ 
+                user_id: local_distributor, 
+                status: true 
+            });
+            if (!localDistributorUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Local distributor not found'
+                });
+            }
+            local_distributor_name = localDistributorUser.name;
+        }
+
         const user_id = uuidv4();
 
         const newUser = {
@@ -140,7 +166,9 @@ const createUser = async (req, res) => {
                 pincode: address.pincode || null
             } : null,
             distributor: distributor || null,
+            distributor_name: distributor_name,
             local_distributor: local_distributor || null,
+            local_distributor_name: local_distributor_name,
             created_by,
             created_at: new Date(),
             modified_by: null,
@@ -250,11 +278,43 @@ const updateUser = async (req, res) => {
         }
 
         if (distributor !== undefined) {
-            updateData.distributor = distributor || null;
+            if (distributor) {
+                const distributorUser = await db.collection('users').findOne({ 
+                    user_id: distributor, 
+                    status: true 
+                });
+                if (!distributorUser) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Distributor not found'
+                    });
+                }
+                updateData.distributor = distributor;
+                updateData.distributor_name = distributorUser.name;
+            } else {
+                updateData.distributor = null;
+                updateData.distributor_name = null;
+            }
         }
 
         if (local_distributor !== undefined) {
-            updateData.local_distributor = local_distributor || null;
+            if (local_distributor) {
+                const localDistributorUser = await db.collection('users').findOne({ 
+                    user_id: local_distributor, 
+                    status: true 
+                });
+                if (!localDistributorUser) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Local distributor not found'
+                    });
+                }
+                updateData.local_distributor = local_distributor;
+                updateData.local_distributor_name = localDistributorUser.name;
+            } else {
+                updateData.local_distributor = null;
+                updateData.local_distributor_name = null;
+            }
         }
 
         if (status !== undefined) {
@@ -279,6 +339,37 @@ const updateUser = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error updating user',
+            error: error.message
+        });
+    }
+};
+
+const getUserById = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+
+        const db = getDB();
+
+        const user = await db.collection('users').findOne({ 
+            user_id,
+            status: true 
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching user',
             error: error.message
         });
     }
@@ -317,6 +408,7 @@ const deleteUser = async (req, res) => {
 
 module.exports = {
     getUsers,
+    getUserById,
     createUser,
     updateUser,
     deleteUser

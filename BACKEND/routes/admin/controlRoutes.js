@@ -3,26 +3,26 @@ const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
 const {
-    getRoles,
-    getRoleById,
-    createRole,
-    updateRole,
-    deleteRole
-} = require('../../controllers/admin/rolesController');
+    getmodels,
+    getControlById,
+    createControl,
+    updateControl,
+    deleteControl
+} = require('../../controllers/admin/controlController');
 
 /**
  * @swagger
  * tags:
- *   name: Roles
- *   description: Role management APIs
+ *   name: models
+ *   description: Control management APIs
  */
 
 /**
  * @swagger
- * /api/admin/roles:
+ * /api/admin/models:
  *   get:
- *     summary: Get all roles with pagination
- *     tags: [Roles]
+ *     summary: Get all models with pagination
+ *     tags: [models]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -41,7 +41,7 @@ const {
  *         description: Number of items per page
  *     responses:
  *       200:
- *         description: Roles fetched successfully
+ *         description: models fetched successfully
  *         content:
  *           application/json:
  *             schema:
@@ -55,12 +55,15 @@ const {
  *                   items:
  *                     type: object
  *                     properties:
- *                       role_id:
- *                         type: integer
- *                         example: 1
- *                       role_name:
+ *                       uid:
  *                         type: string
- *                         example: "Admin"
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                         example: "Control Panel A"
+ *                       quantity:
+ *                         type: number
+ *                         example: 100
  *                       created_by:
  *                         type: string
  *                         example: "admin@example.com"
@@ -70,7 +73,7 @@ const {
  *                       modified_by:
  *                         type: string
  *                         nullable: true
- *                       modified_at:
+ *                       modified_time:
  *                         type: string
  *                         format: date-time
  *                         nullable: true
@@ -97,74 +100,42 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/roles', authMiddleware, pagination, getRoles);
+router.get('/models', authMiddleware, pagination, getmodels);
 
 /**
  * @swagger
- * /api/admin/roles/{role_id}:
+ * /api/admin/models/{uid}:
  *   get:
- *     summary: Get a role by ID
- *     tags: [Roles]
+ *     summary: Get a control by UID
+ *     tags: [models]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: role_id
+ *         name: uid
  *         required: true
  *         schema:
- *           type: integer
- *         description: Role ID
+ *           type: string
+ *           format: uuid
+ *         description: Control UID
  *     responses:
  *       200:
- *         description: Role fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     role_id:
- *                       type: integer
- *                       example: 1
- *                     role_name:
- *                       type: string
- *                       example: "Admin"
- *                     created_by:
- *                       type: string
- *                       example: "admin@example.com"
- *                     created_time:
- *                       type: string
- *                       format: date-time
- *                     modified_by:
- *                       type: string
- *                       nullable: true
- *                     modified_at:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
- *                     status:
- *                       type: boolean
- *                       example: true
+ *         description: Control fetched successfully
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Role not found
+ *         description: Control not found
  *       500:
  *         description: Server error
  */
-router.get('/roles/:role_id', authMiddleware, getRoleById);
+router.get('/models/:uid', authMiddleware, getControlById);
 
 /**
  * @swagger
- * /api/admin/roles:
+ * /api/admin/models:
  *   post:
- *     summary: Create a new role
- *     tags: [Roles]
+ *     summary: Create a new control
+ *     tags: [models]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -174,18 +145,22 @@ router.get('/roles/:role_id', authMiddleware, getRoleById);
  *           schema:
  *             type: object
  *             required:
- *               - role_name
+ *               - name
+ *               - quantity
  *               - created_by
  *             properties:
- *               role_name:
+ *               name:
  *                 type: string
- *                 example: "Manager"
+ *                 example: "Control Panel A"
+ *               quantity:
+ *                 type: number
+ *                 example: 100
  *               created_by:
  *                 type: string
  *                 example: "admin@example.com"
  *     responses:
  *       201:
- *         description: Role created successfully
+ *         description: Control created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -196,7 +171,7 @@ router.get('/roles/:role_id', authMiddleware, getRoleById);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Role created successfully"
+ *                   example: "Control created successfully"
  *                 data:
  *                   type: object
  *       400:
@@ -206,23 +181,24 @@ router.get('/roles/:role_id', authMiddleware, getRoleById);
  *       500:
  *         description: Server error
  */
-router.post('/roles', authMiddleware, createRole);
+router.post('/models', authMiddleware, createControl);
 
 /**
  * @swagger
- * /api/admin/roles/{role_id}:
+ * /api/admin/models/{uid}:
  *   put:
- *     summary: Update a role
- *     tags: [Roles]
+ *     summary: Update a control
+ *     tags: [models]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: role_id
+ *         name: uid
  *         required: true
  *         schema:
- *           type: integer
- *         description: Role ID
+ *           type: string
+ *           format: uuid
+ *         description: Control UID
  *     requestBody:
  *       required: true
  *       content:
@@ -230,54 +206,59 @@ router.post('/roles', authMiddleware, createRole);
  *           schema:
  *             type: object
  *             required:
- *               - role_name
+ *               - name
+ *               - quantity
  *               - modified_by
  *             properties:
- *               role_name:
+ *               name:
  *                 type: string
- *                 example: "Senior Manager"
+ *                 example: "Control Panel A Updated"
+ *               quantity:
+ *                 type: number
+ *                 example: 150
  *               modified_by:
  *                 type: string
  *                 example: "admin@example.com"
  *     responses:
  *       200:
- *         description: Role updated successfully
+ *         description: Control updated successfully
  *       400:
  *         description: Validation error
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Role not found
+ *         description: Control not found
  *       500:
  *         description: Server error
  */
-router.put('/roles/:role_id', authMiddleware, updateRole);
+router.put('/models/:uid', authMiddleware, updateControl);
 
 /**
  * @swagger
- * /api/admin/roles/{role_id}:
+ * /api/admin/models/{uid}:
  *   delete:
- *     summary: Delete a role (soft delete)
- *     tags: [Roles]
+ *     summary: Delete a control (soft delete)
+ *     tags: [models]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: role_id
+ *         name: uid
  *         required: true
  *         schema:
- *           type: integer
- *         description: Role ID
+ *           type: string
+ *           format: uuid
+ *         description: Control UID
  *     responses:
  *       200:
- *         description: Role deleted successfully
+ *         description: Control deleted successfully
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Role not found
+ *         description: Control not found
  *       500:
  *         description: Server error
  */
-router.delete('/roles/:role_id', authMiddleware, deleteRole);
+router.delete('/models/:uid', authMiddleware, deleteControl);
 
 module.exports = router;

@@ -1,6 +1,8 @@
 const { ObjectId } = require('mongodb');
 const { getDB } = require('../../config/database');
 const { sendProfileUpdatedEmail } = require('../../services/emailService');
+const path = require('path');
+const fs = require('fs');
 
 const getProfile = async (req, res) => {
     try {
@@ -26,26 +28,10 @@ const getProfile = async (req, res) => {
             });
         }
 
-        const userResponse = {
-            id: user._id,
-            user_id: user.user_id,
-            name: user.name,
-            email: user.email,
-            number: user.number,
-            roles: user.roles,
-            role_names: user.role_names,
-            address: user.address,
-            distributor: user.distributor,
-            local_distributor: user.local_distributor,
-            created_at: user.created_at,
-            modified_at: user.modified_at,
-            status: user.status
-        };
-
         return res.status(200).json({
             success: true,
             message: 'Profile fetched successfully',
-            data: userResponse
+            data: user
         });
     } catch (error) {
         console.error('Fetching profile failed:', error);
@@ -117,28 +103,12 @@ const updateProfile = async (req, res) => {
 
         const updatedUser = await db.collection('users').findOne({ user_id });
 
-        const userResponse = {
-            id: updatedUser._id,
-            user_id: updatedUser.user_id,
-            name: updatedUser.name,
-            email: updatedUser.email,
-            number: updatedUser.number,
-            roles: updatedUser.roles,
-            role_names: updatedUser.role_names,
-            address: updatedUser.address,
-            distributor: updatedUser.distributor,
-            local_distributor: updatedUser.local_distributor,
-            created_at: updatedUser.created_at,
-            modified_at: updatedUser.modified_at,
-            status: updatedUser.status
-        };
-
         sendProfileUpdatedEmail(updatedUser, updateData);
 
         return res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
-            data: userResponse
+            data: updatedUser
         });
     } catch (error) {
         console.error('Updating profile failed:', error);
@@ -149,7 +119,132 @@ const updateProfile = async (req, res) => {
     }
 };
 
+const uploadProfilePicture = async (req, res) => {
+    try {
+        const { user_id } = req;
+
+        if (!user_id) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Profile picture file is required' 
+            });
+        }
+
+        const db = getDB();
+        const user = await db.collection('users').findOne({ 
+            user_id,
+            status: true 
+        });
+
+        if (!user) {
+            if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+
+        if (user.profile_pic) {
+            const oldFilePath = path.resolve(__dirname, '../../', user.profile_pic);
+            if (fs.existsSync(oldFilePath)) {
+                fs.unlinkSync(oldFilePath);
+            }
+        }
+
+        const profilePicPath = req.file.path.replace(/\\/g, '/');
+
+        await db.collection('users').updateOne(
+            { user_id },
+            { 
+                $set: {
+                    profile_pic: profilePicPath,
+                    modified_by: user.email || user_id,
+                    modified_at: new Date()
+                }
+            }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile picture uploaded successfully',
+            data: {
+                profile_pic: profilePicPath
+            }
+        });
+    } catch (error) {
+        if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+        }
+        console.error('Uploading profile picture failed:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Internal Server Error' 
+        });
+    }
+};
+
+const getProfilePicture = async (req, res) => {
+    try {
+        const { user_id } = req;
+
+        if (!user_id) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        const db = getDB();
+        const user = await db.collection('users').findOne({ 
+            user_id,
+            status: true 
+        });
+
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+
+        if (!user.profile_pic) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Profile picture not found' 
+            });
+        }
+
+        const filePath = path.resolve(__dirname, '../../', user.profile_pic);
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Profile picture file not found' 
+            });
+        }
+
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('Fetching profile picture failed:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Internal Server Error' 
+        });
+    }
+};
+
 module.exports = {
     getProfile,
-    updateProfile
+    updateProfile,
+    uploadProfilePicture,
+    getProfilePicture
 };

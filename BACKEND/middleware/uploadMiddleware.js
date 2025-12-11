@@ -7,6 +7,11 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+const profilePicsDir = path.join(uploadDir, 'profile-pics');
+if (!fs.existsSync(profilePicsDir)) {
+    fs.mkdirSync(profilePicsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadDir);
@@ -35,4 +40,39 @@ const upload = multer({
     fileFilter
 });
 
-module.exports = upload;
+const profilePicStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, profilePicsDir);
+    },
+    filename: (req, file, cb) => {
+        const user_id = req.user_id;
+        if (!user_id) {
+            return cb(new Error('User ID is required for profile picture upload'));
+        }
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${user_id}${ext}`);
+    }
+});
+
+const profilePicFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Only JPG and PNG files are allowed for profile pictures'));
+    }
+};
+
+const uploadProfilePic = multer({
+    storage: profilePicStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: profilePicFilter
+});
+
+module.exports = {
+    upload,
+    uploadProfilePic
+};

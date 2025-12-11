@@ -4,6 +4,7 @@ const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
 const {
     getUsers,
+    getUserById,
     createUser,
     updateUser,
     deleteUser
@@ -97,10 +98,20 @@ const {
  *                             type: string
  *                       distributor:
  *                         type: string
+ *                         format: uuid
  *                         nullable: true
- *                       local_distributor:
+ *                       distributor_name:
  *                         type: string
  *                         nullable: true
+ *                         example: "John Distributor"
+ *                       local_distributor:
+ *                         type: string
+ *                         format: uuid
+ *                         nullable: true
+ *                       local_distributor_name:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "Jane Local Distributor"
  *                       created_by:
  *                         type: string
  *                       created_at:
@@ -136,6 +147,109 @@ const {
  *         description: Server error
  */
 router.get('/users', authMiddleware, pagination, getUsers);
+
+/**
+ * @swagger
+ * /api/admin/users/{user_id}:
+ *   get:
+ *     summary: Get a user by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     number:
+ *                       type: string
+ *                     roles:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                     role_names:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     address:
+ *                       type: object
+ *                       properties:
+ *                         doorno:
+ *                           type: string
+ *                         street:
+ *                           type: string
+ *                         city:
+ *                           type: string
+ *                         district:
+ *                           type: string
+ *                         state:
+ *                           type: string
+ *                         country:
+ *                           type: string
+ *                         pincode:
+ *                           type: string
+ *                     distributor:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     distributor_name:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "John Distributor"
+ *                     local_distributor:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     local_distributor_name:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "Jane Local Distributor"
+ *                     created_by:
+ *                       type: string
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                     modified_by:
+ *                       type: string
+ *                       nullable: true
+ *                     modified_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     status:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/users/:user_id', authMiddleware, getUserById);
 
 /**
  * @swagger

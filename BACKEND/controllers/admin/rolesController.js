@@ -149,6 +149,37 @@ const updateRole = async (req, res) => {
     }
 };
 
+const getRoleById = async (req, res) => {
+    try {
+        const { role_id } = req.params;
+
+        const db = getDB();
+
+        const role = await db.collection('roles').findOne({
+            role_id: parseInt(role_id),
+            status: true
+        });
+
+        if (!role) {
+            return res.status(404).json({
+                success: false,
+                message: 'Role not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: role
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching role',
+            error: error.message
+        });
+    }
+};
+
 const deleteRole = async (req, res) => {
     try {
         const { role_id } = req.params;
@@ -184,6 +215,7 @@ const deleteRole = async (req, res) => {
 
 module.exports = {
     getRoles,
+    getRoleById,
     createRole,
     updateRole,
     deleteRole

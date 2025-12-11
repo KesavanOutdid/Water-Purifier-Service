@@ -83,15 +83,10 @@ const getProfile = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Admin not found' });
         }
 
-        const adminResponse = {
-            ...admin,
-            password: undefined
-        };
-
         return res.status(200).json({
             success: true,
             message: 'Profile fetched successfully',
-            data: adminResponse,
+            data: admin,
         });
     } catch (error) {
         console.error('Fetching admin profile failed:', error);

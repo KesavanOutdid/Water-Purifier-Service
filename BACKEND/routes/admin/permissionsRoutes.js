@@ -147,7 +147,7 @@ router.post('/permissions/bulk', authMiddleware, assignBulkPermissions);
  * @swagger
  * /api/admin/permissions/roles:
  *   get:
- *     summary: Get permissions by role IDs with pagination
+ *     summary: Get permissions by role IDs
  *     tags: [Permissions]
  *     security:
  *       - bearerAuth: []
@@ -159,19 +159,6 @@ router.post('/permissions/bulk', authMiddleware, assignBulkPermissions);
  *           type: string
  *         description: Comma-separated role IDs (e.g., "1,2,3")
  *         example: "1,2"
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 100
- *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Permissions fetched successfully
@@ -216,21 +203,6 @@ router.post('/permissions/bulk', authMiddleware, assignBulkPermissions);
  *                       updated_at:
  *                         type: string
  *                         format: date-time
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     currentPage:
- *                       type: integer
- *                     pageSize:
- *                       type: integer
- *                     totalItems:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
- *                     hasNextPage:
- *                       type: boolean
- *                     hasPrevPage:
- *                       type: boolean
  *       400:
  *         description: Validation error
  *       401:
@@ -238,7 +210,7 @@ router.post('/permissions/bulk', authMiddleware, assignBulkPermissions);
  *       500:
  *         description: Server error
  */
-router.get('/permissions/roles', authMiddleware, pagination, findByRoles);
+router.get('/permissions/roles', authMiddleware, findByRoles);
 
 /**
  * @swagger

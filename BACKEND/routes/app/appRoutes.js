@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
+const appTaskRoutes = require('./appTaskRoutes');
+const { uploadProfilePic } = require('../../middleware/uploadMiddleware');
 const {
     getProfile,
-    updateProfile
+    updateProfile,
+    uploadProfilePicture,
+    getProfilePicture
 } = require('../../controllers/app/appProfileController');
 
 /**
@@ -80,6 +84,10 @@ const {
  *                     local_distributor:
  *                       type: string
  *                       nullable: true
+ *                     profile_pic:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "uploads/profile-pics/abc123.jpg"
  *                     status:
  *                       type: boolean
  *                     created_at:
@@ -170,5 +178,88 @@ router.get('/profile', authMiddleware, getProfile);
  *         description: Internal Server Error
  */
 router.put('/profile', authMiddleware, updateProfile);
+
+/**
+ * @swagger
+ * /api/app/profile/picture:
+ *   post:
+ *     summary: Upload or update profile picture (Mobile App)
+ *     tags: [App Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - profile_pic
+ *             properties:
+ *               profile_pic:
+ *                 type: string
+ *                 format: binary
+ *                 description: Profile picture file (JPG or PNG only, max 5MB)
+ *     responses:
+ *       200:
+ *         description: Profile picture uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile picture uploaded successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     profile_pic:
+ *                       type: string
+ *                       example: "uploads/profile-pics/abc123.jpg"
+ *       400:
+ *         description: File validation error
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.post('/profile/picture', authMiddleware, uploadProfilePic.single('profile_pic'), uploadProfilePicture);
+
+/**
+ * @swagger
+ * /api/app/profile/picture:
+ *   get:
+ *     summary: Get user profile picture (Mobile App)
+ *     tags: [App Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile picture retrieved successfully
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: Profile picture not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/profile/picture', authMiddleware, getProfilePicture);
+
+router.use('/', appTaskRoutes);
 
 module.exports = router;

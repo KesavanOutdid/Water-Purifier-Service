@@ -91,18 +91,12 @@ const findByRoles = async (req, res) => {
             });
         }
 
-        const { page, limit, skip } = req.pagination;
         const db = getDB();
 
         const query = { role_id: { $in: roleIds } };
 
-        const totalItems = await db.collection('permissions').countDocuments(query);
-        req.paginationTotal = totalItems;
-
         const permissions = await db.collection('permissions')
             .find(query)
-            .skip(skip)
-            .limit(limit)
             .toArray();
 
         res.json({
