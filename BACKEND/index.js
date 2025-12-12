@@ -4,6 +4,7 @@ const { connectDB } = require('./config/database');
 const { connectRedis } = require('./config/redis');
 const { verifyEmailConnection } = require('./config/email');
 const seedData = require('./scripts/seedData');
+const createIndexes = require('./scripts/createIndexes');
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,6 +15,7 @@ const startServer = async () => {
         await verifyEmailConnection();
         
         await seedData();
+        await createIndexes();
         
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);

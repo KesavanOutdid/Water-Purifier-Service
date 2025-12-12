@@ -54,11 +54,19 @@ const login = async (req, res) => {
             roles: user.roles,
             role_names: user.role_names,
             address: user.address,
-            distributor: user.distributor,
-            local_distributor: user.local_distributor,
             created_at: user.created_at,
             modified_at: user.modified_at
         };
+
+        if (user.distributor) {
+            userResponse.distributor = user.distributor;
+            userResponse.distributor_name = user.distributor_name;
+        }
+
+        if (user.local_distributor) {
+            userResponse.local_distributor = user.local_distributor;
+            userResponse.local_distributor_name = user.local_distributor_name;
+        }
 
         return res.status(200).json({
             success: true,

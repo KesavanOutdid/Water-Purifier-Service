@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
+const { cacheMiddleware } = require('../../middleware/cache');
 const {
     getDevices,
     getDeviceById,
@@ -12,8 +13,7 @@ const {
 const {
     assignDevice,
     unassignDevice,
-    reassignDevice,
-    getAssignmentHistory
+    reassignDevice
 } = require('../../controllers/admin/deviceAssignmentController');
 
 /**
@@ -137,13 +137,13 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/devices', authMiddleware, pagination, getDevices);
+router.get('/devices', authMiddleware, pagination, cacheMiddleware('devices', 300), getDevices);
 
 /**
  * @swagger
  * /api/admin/devices/{device_id}:
  *   get:
- *     summary: Get a device by ID
+ *     summary: Get a device by ID (includes assignment history)
  *     tags: [Devices]
  *     security:
  *       - bearerAuth: []
@@ -156,7 +156,35 @@ router.get('/devices', authMiddleware, pagination, getDevices);
  *         description: Device ID
  *     responses:
  *       200:
- *         description: Device fetched successfully
+ *         description: Device fetched successfully with assignment history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     device_id:
+ *                       type: string
+ *                       example: "DEVICE001"
+ *                     model_id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *                     assigned_to:
+ *                       type: string
+ *                     assigned_to_local:
+ *                       type: string
+ *                     assignment_history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                       description: Complete assignment history of the device
  *       401:
  *         description: Unauthorized
  *       404:
@@ -449,32 +477,5 @@ router.post('/devices/:device_id/unassign', authMiddleware, unassignDevice);
  *         description: Server error
  */
 router.post('/devices/:device_id/reassign', authMiddleware, reassignDevice);
-
-/**
- * @swagger
- * /api/admin/devices/{device_id}/assignment-history:
- *   get:
- *     summary: Get device assignment history
- *     tags: [Devices]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: device_id
- *         required: true
- *         schema:
- *           type: string
- *         description: Device ID
- *     responses:
- *       200:
- *         description: Assignment history fetched successfully
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Device not found
- *       500:
- *         description: Server error
- */
-router.get('/devices/:device_id/assignment-history', authMiddleware, getAssignmentHistory);
 
 module.exports = router;

@@ -153,14 +153,34 @@ const uploadProfilePicture = async (req, res) => {
             });
         }
 
-        if (user.profile_pic) {
-            const oldFilePath = path.resolve(__dirname, '../../', user.profile_pic);
-            if (fs.existsSync(oldFilePath)) {
-                fs.unlinkSync(oldFilePath);
+        const currentFileExt = path.extname(req.file.path).toLowerCase();
+        const profilePicsDir = path.join(__dirname, '../../uploads/profile-pics');
+        const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif', '.heic', '.heif'];
+        
+        for (const ext of extensions) {
+            if (ext !== currentFileExt) {
+                const oldFilePath = path.join(profilePicsDir, `${user_id}${ext}`);
+                if (fs.existsSync(oldFilePath)) {
+                    try {
+                        fs.unlinkSync(oldFilePath);
+                    } catch (err) {
+                        console.error('Failed to delete old profile picture:', err);
+                    }
+                }
             }
         }
 
-        const profilePicPath = req.file.path.replace(/\\/g, '/');
+        let profilePicPath = req.file.path.replace(/\\/g, '/');
+        
+        if (path.isAbsolute(profilePicPath)) {
+            const backendDir = path.resolve(__dirname, '../../');
+            profilePicPath = path.relative(backendDir, req.file.path).replace(/\\/g, '/');
+        }
+        
+        console.log('File uploaded:');
+        console.log('- Original path:', req.file.path);
+        console.log('- Stored path:', profilePicPath);
+        console.log('- File exists check:', fs.existsSync(req.file.path));
 
         await db.collection('users').updateOne(
             { user_id },
@@ -223,16 +243,33 @@ const getProfilePicture = async (req, res) => {
             });
         }
 
-        const filePath = path.resolve(__dirname, '../../', user.profile_pic);
+        let filePath = path.join(__dirname, '../../', user.profile_pic);
+        let absolutePath = path.resolve(filePath);
         
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Profile picture file not found' 
-            });
+        if (!fs.existsSync(absolutePath)) {
+            const profilePicsDir = path.join(__dirname, '../../uploads/profile-pics');
+            const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif', '.heic', '.heif'];
+            let found = false;
+            
+            for (const ext of extensions) {
+                const testPath = path.join(profilePicsDir, `${user_id}${ext}`);
+                if (fs.existsSync(testPath)) {
+                    absolutePath = testPath;
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                console.error(`Profile picture not found for user: ${user_id}`);
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Profile picture file not found'
+                });
+            }
         }
 
-        res.sendFile(filePath);
+        res.sendFile(absolutePath);
     } catch (error) {
         console.error('Fetching profile picture failed:', error);
         return res.status(500).json({ 

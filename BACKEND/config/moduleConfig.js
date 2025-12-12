@@ -3,8 +3,8 @@ const MODULES = [
         module: "Dashboard",
         actions: ["create", "view", "update", "delete"]
     },
-
-    // MANAGEMENT MODULES
+ 
+    // USER & ROLE MANAGEMENT
     {
         module: "Manage Users",
         actions: ["create", "view", "update", "delete"]
@@ -13,31 +13,39 @@ const MODULES = [
         module: "Manage Roles",
         actions: ["create", "view", "update", "delete"]
     },
-
-    // OTHER SEPARATE MODULES
+ 
+    // MODELS
     {
         module: "Manage Models",
         actions: ["create", "view", "update", "delete"]
     },
+ 
+    // DEVICES
     {
         module: "Manage Devices",
         actions: ["create", "view", "update", "delete"]
     },
+ 
+    // TASK MANAGEMENT (MAIN MODULE)
     {
-        module: "Manage Installation",
-        actions: ["create", "view", "update", "delete"]
+        module: "Task Management",
+        submodules: [
+            {
+                name: "Manage Installation",
+                actions: ["create", "view", "update", "delete"]
+            },
+            {
+                name: "Manage Service",
+                actions: ["create", "view", "update", "delete"]
+            }
+        ]
     },
-    {
-        module: "Manage Service",
-        actions: ["create", "view", "update", "delete"]
-    },
-
-   
-
+ 
+    // SETTINGS
     {
         module: "Settings",
         actions: ["create", "view", "update", "delete"]
     }
 ];
-
+ 
 module.exports = MODULES;

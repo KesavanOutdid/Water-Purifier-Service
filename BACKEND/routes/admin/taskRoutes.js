@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
+const { cacheMiddleware } = require('../../middleware/cache');
 const {
     createTask,
     getTaskById,
@@ -9,7 +10,6 @@ const {
     getInstallation,
     assignTask,
     reassignTask,
-    getTaskHistory,
     getEngineerHistory
 } = require('../../controllers/admin/taskController');
 
@@ -47,8 +47,36 @@ const {
  *                 type: string
  *                 example: "John Customer"
  *               address:
- *                 type: string
- *                 example: "123 Main Street, New York, NY 10001"
+ *                 type: object
+ *                 properties:
+ *                   doorno:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "123"
+ *                   street:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "Main Street"
+ *                   city:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "New York"
+ *                   district:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "Manhattan"
+ *                   state:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "NY"
+ *                   country:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "USA"
+ *                   pincode:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "10001"
  *               phone:
  *                 type: string
  *                 example: "+1234567890"
@@ -103,7 +131,29 @@ const {
  *                     customer_name:
  *                       type: string
  *                     address:
- *                       type: string
+ *                       type: object
+ *                       properties:
+ *                         doorno:
+ *                           type: string
+ *                           nullable: true
+ *                         street:
+ *                           type: string
+ *                           nullable: true
+ *                         city:
+ *                           type: string
+ *                           nullable: true
+ *                         district:
+ *                           type: string
+ *                           nullable: true
+ *                         state:
+ *                           type: string
+ *                           nullable: true
+ *                         country:
+ *                           type: string
+ *                           nullable: true
+ *                         pincode:
+ *                           type: string
+ *                           nullable: true
  *                     phone:
  *                       type: string
  *                     email:
@@ -178,6 +228,246 @@ router.post('/tasks', authMiddleware, createTask);
 
 /**
  * @swagger
+ * /api/admin/tasks/services:
+ *   get:
+ *     summary: Get all service tasks with pagination
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 100
+ *         description: Number of items per page
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter service tasks by user - if user has role 1 (admin), returns all tasks, otherwise returns tasks where user is distributor or local distributor (optional)
+ *         required: false
+ *     responses:
+ *       200:
+ *         description: Service tasks fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       task_id:
+ *                         type: integer
+ *                         example: 12345
+ *                       customer_name:
+ *                         type: string
+ *                       address:
+ *                         type: object
+ *                         properties:
+ *                           doorno:
+ *                             type: string
+ *                             nullable: true
+ *                           street:
+ *                             type: string
+ *                             nullable: true
+ *                           city:
+ *                             type: string
+ *                             nullable: true
+ *                           district:
+ *                             type: string
+ *                             nullable: true
+ *                           state:
+ *                             type: string
+ *                             nullable: true
+ *                           country:
+ *                             type: string
+ *                             nullable: true
+ *                           pincode:
+ *                             type: string
+ *                             nullable: true
+ *                       phone:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       service_type:
+ *                         type: integer
+ *                         example: 2
+ *                       model_id:
+ *                         type: string
+ *                         format: uuid
+ *                       model_name:
+ *                         type: string
+ *                       assigned_to:
+ *                         type: string
+ *                         format: uuid
+ *                         nullable: true
+ *                         description: Engineer user ID
+ *                       engineer_name:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "John Engineer"
+ *                       task_status:
+ *                         type: string
+ *                         enum: [created, assigned, accepted, rejected, in_progress, completed]
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/tasks/services', authMiddleware, pagination, cacheMiddleware('tasks:services', 300), getServices);
+
+/**
+ * @swagger
+ * /api/admin/tasks/installation:
+ *   get:
+ *     summary: Get all installation tasks with pagination
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 100
+ *         description: Number of items per page
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter installation tasks by user - if user has role 1 (admin), returns all tasks, otherwise returns tasks where user is distributor or local distributor (optional)
+ *         required: false
+ *     responses:
+ *       200:
+ *         description: Installation tasks fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       task_id:
+ *                         type: integer
+ *                         example: 54321
+ *                       customer_name:
+ *                         type: string
+ *                       address:
+ *                         type: object
+ *                         properties:
+ *                           doorno:
+ *                             type: string
+ *                             nullable: true
+ *                           street:
+ *                             type: string
+ *                             nullable: true
+ *                           city:
+ *                             type: string
+ *                             nullable: true
+ *                           district:
+ *                             type: string
+ *                             nullable: true
+ *                           state:
+ *                             type: string
+ *                             nullable: true
+ *                           country:
+ *                             type: string
+ *                             nullable: true
+ *                           pincode:
+ *                             type: string
+ *                             nullable: true
+ *                       phone:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       service_type:
+ *                         type: integer
+ *                         example: 1
+ *                       model_id:
+ *                         type: string
+ *                         format: uuid
+ *                       model_name:
+ *                         type: string
+ *                       assigned_to:
+ *                         type: string
+ *                         format: uuid
+ *                         nullable: true
+ *                         description: Engineer user ID
+ *                       engineer_name:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "John Engineer"
+ *                       task_status:
+ *                         type: string
+ *                         enum: [created, assigned, accepted, rejected, in_progress, completed]
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('tasks:installation', 300), getInstallation);
+
+/**
+ * @swagger
  * /api/admin/tasks/{task_id}:
  *   get:
  *     summary: Get a task by task ID
@@ -212,7 +502,29 @@ router.post('/tasks', authMiddleware, createTask);
  *                     customer_name:
  *                       type: string
  *                     address:
- *                       type: string
+ *                       type: object
+ *                       properties:
+ *                         doorno:
+ *                           type: string
+ *                           nullable: true
+ *                         street:
+ *                           type: string
+ *                           nullable: true
+ *                         city:
+ *                           type: string
+ *                           nullable: true
+ *                         district:
+ *                           type: string
+ *                           nullable: true
+ *                         state:
+ *                           type: string
+ *                           nullable: true
+ *                         country:
+ *                           type: string
+ *                           nullable: true
+ *                         pincode:
+ *                           type: string
+ *                           nullable: true
  *                     phone:
  *                       type: string
  *                     email:
@@ -274,6 +586,70 @@ router.post('/tasks', authMiddleware, createTask);
  *                     task_status:
  *                       type: string
  *                       enum: [created, assigned, accepted, rejected, in_progress, completed]
+ *                     completed_time:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: Time when task was completed
+ *                     completion_photos:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       nullable: true
+ *                       description: Array of photo filenames
+ *                     completion_photos_urls:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       nullable: true
+ *                       description: Array of full URLs to access completion photos
+ *                       example: ["/uploads/task-photos/12345_1234567890.jpg"]
+ *                     collected_device:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Device that was allotted when completing task
+ *                       properties:
+ *                         device_id:
+ *                           type: string
+ *                         device_name:
+ *                           type: string
+ *                         device_model_id:
+ *                           type: string
+ *                     task_history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           action:
+ *                             type: string
+ *                             enum: [assign, reassign, accept, reject, complete]
+ *                           from:
+ *                             type: string
+ *                             nullable: true
+ *                           from_name:
+ *                             type: string
+ *                             nullable: true
+ *                           to:
+ *                             type: string
+ *                             nullable: true
+ *                           to_name:
+ *                             type: string
+ *                             nullable: true
+ *                           engineer_id:
+ *                             type: string
+ *                             nullable: true
+ *                           engineer_name:
+ *                             type: string
+ *                             nullable: true
+ *                           assigned_by:
+ *                             type: string
+ *                             nullable: true
+ *                           timestamp:
+ *                             type: string
+ *                             format: date-time
+ *                           reason:
+ *                             type: string
+ *                             nullable: true
  *       401:
  *         description: Unauthorized
  *       404:
@@ -282,212 +658,6 @@ router.post('/tasks', authMiddleware, createTask);
  *         description: Server error
  */
 router.get('/tasks/:task_id', authMiddleware, getTaskById);
-
-/**
- * @swagger
- * /api/admin/tasks/services:
- *   get:
- *     summary: Get all service tasks with pagination
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 100
- *         description: Number of items per page
- *       - in: query
- *         name: distributor_id
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by distributor ID (optional)
- *       - in: query
- *         name: local_distributor_id
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by local distributor ID (optional)
- *     responses:
- *       200:
- *         description: Service tasks fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       task_id:
- *                         type: integer
- *                         example: 12345
- *                       customer_name:
- *                         type: string
- *                       address:
- *                         type: string
- *                       phone:
- *                         type: string
- *                       email:
- *                         type: string
- *                       service_type:
- *                         type: integer
- *                         example: 2
- *                       model_id:
- *                         type: string
- *                         format: uuid
- *                       model_name:
- *                         type: string
- *                       assigned_to:
- *                         type: string
- *                         format: uuid
- *                         nullable: true
- *                         description: Engineer user ID
- *                       engineer_name:
- *                         type: string
- *                         nullable: true
- *                         example: "John Engineer"
- *                       task_status:
- *                         type: string
- *                         enum: [created, assigned, accepted, rejected, in_progress, completed]
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     currentPage:
- *                       type: integer
- *                     pageSize:
- *                       type: integer
- *                     totalItems:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
- *                     hasNextPage:
- *                       type: boolean
- *                     hasPrevPage:
- *                       type: boolean
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.get('/tasks/services', authMiddleware, pagination, getServices);
-
-/**
- * @swagger
- * /api/admin/tasks/installation:
- *   get:
- *     summary: Get all installation tasks with pagination
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 100
- *         description: Number of items per page
- *       - in: query
- *         name: distributor_id
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by distributor ID (optional)
- *       - in: query
- *         name: local_distributor_id
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by local distributor ID (optional)
- *     responses:
- *       200:
- *         description: Installation tasks fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       task_id:
- *                         type: integer
- *                         example: 54321
- *                       customer_name:
- *                         type: string
- *                       address:
- *                         type: string
- *                       phone:
- *                         type: string
- *                       email:
- *                         type: string
- *                       service_type:
- *                         type: integer
- *                         example: 1
- *                       model_id:
- *                         type: string
- *                         format: uuid
- *                       model_name:
- *                         type: string
- *                       assigned_to:
- *                         type: string
- *                         format: uuid
- *                         nullable: true
- *                         description: Engineer user ID
- *                       engineer_name:
- *                         type: string
- *                         nullable: true
- *                         example: "John Engineer"
- *                       task_status:
- *                         type: string
- *                         enum: [created, assigned, accepted, rejected, in_progress, completed]
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     currentPage:
- *                       type: integer
- *                     pageSize:
- *                       type: integer
- *                     totalItems:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
- *                     hasNextPage:
- *                       type: boolean
- *                     hasPrevPage:
- *                       type: boolean
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.get('/tasks/installation', authMiddleware, pagination, getInstallation);
 
 /**
  * @swagger
@@ -607,94 +777,7 @@ router.post('/tasks/:task_id/assign', authMiddleware, assignTask);
  */
 router.post('/tasks/:task_id/reassign', authMiddleware, reassignTask);
 
-/**
- * @swagger
- * /api/admin/tasks/{task_id}/history:
- *   get:
- *     summary: Get task assignment history
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: task_id
- *         required: true
- *         schema:
- *           type: integer
- *         description: 5-digit Task ID
- *         example: 12345
- *     responses:
- *       200:
- *         description: Task history fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     task_id:
- *                       type: integer
- *                     customer_name:
- *                       type: string
- *                     service_type:
- *                       type: integer
- *                     current_status:
- *                       type: string
- *                     current_engineer:
- *                       type: object
- *                       properties:
- *                         engineer_id:
- *                           type: string
- *                         engineer_name:
- *                           type: string
- *                     history:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           action:
- *                             type: string
- *                             enum: [assign, reassign, accept, reject, complete]
- *                           from:
- *                             type: string
- *                             nullable: true
- *                           from_name:
- *                             type: string
- *                             nullable: true
- *                           to:
- *                             type: string
- *                             nullable: true
- *                           to_name:
- *                             type: string
- *                             nullable: true
- *                           engineer_id:
- *                             type: string
- *                             nullable: true
- *                           engineer_name:
- *                             type: string
- *                             nullable: true
- *                           assigned_by:
- *                             type: string
- *                             nullable: true
- *                           timestamp:
- *                             type: string
- *                             format: date-time
- *                           reason:
- *                             type: string
- *                             nullable: true
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Task not found
- *       500:
- *         description: Server error
- */
-router.get('/tasks/:task_id/history', authMiddleware, getTaskHistory);
+
 
 /**
  * @swagger

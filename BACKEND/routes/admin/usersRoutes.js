@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
+const { cacheMiddleware } = require('../../middleware/cache');
 const {
     getUsers,
     getUserById,
@@ -21,7 +22,7 @@ const {
  * @swagger
  * /api/admin/users:
  *   get:
- *     summary: Get all users with pagination (optionally filter by distributor/local_distributor)
+ *     summary: Get all users with pagination (optionally filter by user role)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -31,7 +32,7 @@ const {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Filter users where this user_id matches distributor or local_distributor
+ *         description: Filter users by requesting user - if user has role 1 (admin), returns all users, otherwise returns users where requesting user is distributor or local distributor (optional)
  *         required: false
  *       - in: query
  *         name: page
@@ -146,7 +147,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/users', authMiddleware, pagination, getUsers);
+router.get('/users', authMiddleware, pagination, cacheMiddleware('users', 300), getUsers);
 
 /**
  * @swagger

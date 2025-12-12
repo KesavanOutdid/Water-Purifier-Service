@@ -199,7 +199,7 @@ router.put('/profile', authMiddleware, updateProfile);
  *               profile_pic:
  *                 type: string
  *                 format: binary
- *                 description: Profile picture file (JPG or PNG only, max 5MB)
+ *                 description: Profile picture file (all image formats allowed, max 15MB)
  *     responses:
  *       200:
  *         description: Profile picture uploaded successfully
@@ -248,6 +248,18 @@ router.post('/profile/picture', authMiddleware, uploadProfilePic.single('profile
  *               type: string
  *               format: binary
  *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/gif:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/bmp:
  *             schema:
  *               type: string
  *               format: binary

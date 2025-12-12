@@ -7,7 +7,7 @@ const getDevices = async (req, res) => {
         const db = getDB();
 
         let query = { status: true };
-        let sortField = { device_id: 1 };
+        let sortField = { created_time: -1 };
 
         if (assignee_id && level) {
             if (!['distributor', 'local_distributor'].includes(level)) {
@@ -22,7 +22,6 @@ const getDevices = async (req, res) => {
             } else if (level === 'local_distributor') {
                 query.assigned_to_local = assignee_id;
             }
-            sortField = { assigned_time: -1 };
         }
 
         const totalItems = await db.collection('devices').countDocuments(query);
@@ -34,10 +33,13 @@ const getDevices = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        const allDevicesCount = await db.collection('devices').countDocuments({ status: true });
         
         res.json({
             success: true,
-            data: devices
+            data: devices,
+            total_count: allDevicesCount
         });
     } catch (error) {
         res.status(500).json({
@@ -65,9 +67,14 @@ const getDeviceById = async (req, res) => {
             });
         }
 
+        const responseData = {
+            ...device,
+            assignment_history: device.assignment_history || []
+        };
+
         res.json({
             success: true,
-            data: device
+            data: responseData
         });
     } catch (error) {
         res.status(500).json({

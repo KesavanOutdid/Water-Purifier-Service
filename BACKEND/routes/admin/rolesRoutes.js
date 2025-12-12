@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const pagination = require('../../middleware/pagination');
+const { cacheMiddleware } = require('../../middleware/cache');
 const {
     getRoles,
     getRoleById,
@@ -97,7 +98,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/roles', authMiddleware, pagination, getRoles);
+router.get('/roles', authMiddleware, pagination, cacheMiddleware('roles', 300), getRoles);
 
 /**
  * @swagger

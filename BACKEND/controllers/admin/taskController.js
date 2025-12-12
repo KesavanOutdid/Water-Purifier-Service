@@ -128,7 +128,15 @@ const createTask = async (req, res) => {
         const newTask = {
             task_id,
             customer_name,
-            address,
+            address: address ? {
+                doorno: address.doorno || null,
+                street: address.street || null,
+                city: address.city || null,
+                district: address.district || null,
+                state: address.state || null,
+                country: address.country || null,
+                pincode: address.pincode || null
+            } : null,
             phone,
             email,
             service_type,
@@ -184,9 +192,25 @@ const getTaskById = async (req, res) => {
             });
         }
 
+        const responseData = { ...task };
+
+        if (task.completion_photos && task.completion_photos.length > 0) {
+            responseData.completion_photos_urls = task.completion_photos.map(
+                photo => `/uploads/task-photos/${photo}`
+            );
+        }
+
+        if (task.device_id) {
+            responseData.collected_device = {
+                device_id: task.device_id,
+                device_name: task.device_name,
+                device_model_id: task.device_model_id
+            };
+        }
+
         res.json({
             success: true,
-            data: task
+            data: responseData
         });
     } catch (error) {
         res.status(500).json({
@@ -200,20 +224,32 @@ const getTaskById = async (req, res) => {
 const getServices = async (req, res) => {
     try {
         const { page, limit, skip } = req.pagination;
-        const { distributor_id, local_distributor_id } = req.query;
+        const { user_id } = req.query;
         const db = getDB();
 
-        const query = { 
+        let query = { 
             status: true, 
             service_type: 2
         };
 
-        if (distributor_id) {
-            query.distributor_id = distributor_id;
-        }
-
-        if (local_distributor_id) {
-            query.local_distributor_id = local_distributor_id;
+        if (user_id) {
+            const requestingUser = await db.collection('users').findOne({ user_id });
+           
+            if (requestingUser && requestingUser.roles && requestingUser.roles.includes(1)) {
+                query = { 
+                    status: true, 
+                    service_type: 2
+                };
+            } else {
+                query = {
+                    status: true,
+                    service_type: 2,
+                    $or: [
+                        { distributor_id: user_id },
+                        { local_distributor_id: user_id }
+                    ]
+                };
+            }
         }
 
         const totalItems = await db.collection('tasks').countDocuments(query);
@@ -225,10 +261,27 @@ const getServices = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        const allServicesCount = await db.collection('tasks').countDocuments({ 
+            status: true, 
+            service_type: 2 
+        });
+
+        const statusCounts = await db.collection('tasks').aggregate([
+            { $match: { status: true, service_type: 2 } },
+            { $group: { _id: '$task_status', count: { $sum: 1 } } }
+        ]).toArray();
+
+        const statusSummary = {};
+        statusCounts.forEach(item => {
+            statusSummary[item._id] = item.count;
+        });
         
         res.json({
             success: true,
-            data: tasks
+            data: tasks,
+            total_count: allServicesCount,
+            status_counts: statusSummary
         });
     } catch (error) {
         res.status(500).json({
@@ -242,20 +295,32 @@ const getServices = async (req, res) => {
 const getInstallation = async (req, res) => {
     try {
         const { page, limit, skip } = req.pagination;
-        const { distributor_id, local_distributor_id } = req.query;
+        const { user_id } = req.query;
         const db = getDB();
 
-        const query = { 
+        let query = { 
             status: true, 
             service_type: 1
         };
 
-        if (distributor_id) {
-            query.distributor_id = distributor_id;
-        }
-
-        if (local_distributor_id) {
-            query.local_distributor_id = local_distributor_id;
+        if (user_id) {
+            const requestingUser = await db.collection('users').findOne({ user_id });
+           
+            if (requestingUser && requestingUser.roles && requestingUser.roles.includes(1)) {
+                query = { 
+                    status: true, 
+                    service_type: 1
+                };
+            } else {
+                query = {
+                    status: true,
+                    service_type: 1,
+                    $or: [
+                        { distributor_id: user_id },
+                        { local_distributor_id: user_id }
+                    ]
+                };
+            }
         }
 
         const totalItems = await db.collection('tasks').countDocuments(query);
@@ -267,10 +332,27 @@ const getInstallation = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        const allInstallationCount = await db.collection('tasks').countDocuments({ 
+            status: true, 
+            service_type: 1 
+        });
+
+        const statusCounts = await db.collection('tasks').aggregate([
+            { $match: { status: true, service_type: 1 } },
+            { $group: { _id: '$task_status', count: { $sum: 1 } } }
+        ]).toArray();
+
+        const statusSummary = {};
+        statusCounts.forEach(item => {
+            statusSummary[item._id] = item.count;
+        });
         
         res.json({
             success: true,
-            data: tasks
+            data: tasks,
+            total_count: allInstallationCount,
+            status_counts: statusSummary
         });
     } catch (error) {
         res.status(500).json({
@@ -472,45 +554,7 @@ const reassignTask = async (req, res) => {
     }
 };
 
-const getTaskHistory = async (req, res) => {
-    try {
-        const { task_id } = req.params;
-        const db = getDB();
 
-        const task = await db.collection('tasks').findOne({ 
-            task_id: parseInt(task_id), 
-            status: true 
-        });
-
-        if (!task) {
-            return res.status(404).json({
-                success: false,
-                message: 'Task not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            data: {
-                task_id: task.task_id,
-                customer_name: task.customer_name,
-                service_type: task.service_type,
-                current_status: task.task_status,
-                current_engineer: {
-                    engineer_id: task.assigned_to,
-                    engineer_name: task.engineer_name
-                },
-                history: task.task_history || []
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching task history',
-            error: error.message
-        });
-    }
-};
 
 const getEngineerHistory = async (req, res) => {
     try {
@@ -567,6 +611,5 @@ module.exports = {
     getInstallation,
     assignTask,
     reassignTask,
-    getTaskHistory,
     getEngineerHistory
 };

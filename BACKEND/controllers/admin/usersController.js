@@ -1,37 +1,53 @@
 const { getDB } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
 const { sendUserCreatedEmail, sendProfileUpdatedEmail } = require('../../services/emailService');
+const { clearCache } = require('../../middleware/cache');
 
 const getUsers = async (req, res) => {
     try {
         const { page, limit, skip } = req.pagination;
         const { user_id } = req.query;
         const db = getDB();
-
+ 
         let query = { status: true };
-
+ 
         if (user_id) {
-            query = {
-                status: true,
-                $or: [
-                    { distributor: user_id },
-                    { local_distributor: user_id }
-                ]
-            };
+            const requestingUser = await db.collection('users').findOne({ user_id });
+           
+            if (requestingUser && requestingUser.roles && requestingUser.roles.includes(1)) {
+                query = { status: true };
+            } else {
+                query = {
+                    status: true,
+                    $or: [
+                        { distributor: user_id },
+                        { local_distributor: user_id }
+                    ]
+                };
+            }
         }
-
+ 
         const totalItems = await db.collection('users').countDocuments(query);
         req.paginationTotal = totalItems;
-
+ 
         const users = await db.collection('users')
             .find(query)
+            .sort({ created_time: -1 })
             .skip(skip)
             .limit(limit)
             .toArray();
+ 
+        const usersWithoutPassword = users.map(user => ({
+            ...user,
+            password: undefined
+        }));
 
+        const allUsersCount = await db.collection('users').countDocuments({ status: true });
+ 
         res.json({
             success: true,
-            data: users
+            data: usersWithoutPassword,
+            total_count: allUsersCount
         });
     } catch (error) {
         res.status(500).json({
@@ -186,6 +202,8 @@ const createUser = async (req, res) => {
 
         sendUserCreatedEmail(newUser, created_by);
 
+        await clearCache('users:*');
+
         res.status(201).json({
             success: true,
             message: 'User created successfully',
@@ -331,6 +349,8 @@ const updateUser = async (req, res) => {
             sendProfileUpdatedEmail(updatedUser, updateData);
         }
 
+        await clearCache('users:*');
+
         res.json({
             success: true,
             message: 'User updated successfully'
@@ -392,6 +412,8 @@ const deleteUser = async (req, res) => {
                 message: 'User not found'
             });
         }
+
+        await clearCache('users:*');
 
         res.json({
             success: true,

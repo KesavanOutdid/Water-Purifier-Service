@@ -38,22 +38,34 @@ const login = async (req, res) => {
 
         sendLoginEmail(admin);
 
+        const userData = {
+            id: admin._id,
+            user_id: admin.user_id,
+            name: admin.name,
+            email: admin.email,
+            roles: admin.roles,
+            role_names: admin.role_names,
+            number: admin.number,
+            created_at: admin.created_at,
+            modified_at: admin.modified_at,
+        };
+
+        if (admin.distributor) {
+            userData.distributor = admin.distributor;
+            userData.distributor_name = admin.distributor_name;
+        }
+
+        if (admin.local_distributor) {
+            userData.local_distributor = admin.local_distributor;
+            userData.local_distributor_name = admin.local_distributor_name;
+        }
+
         return res.status(200).json({
             success: true,
             message: 'Login successful',
             data: {
                 token,
-                user: {
-                    id: admin._id,
-                    user_id: admin.user_id,
-                    name: admin.name,
-                    email: admin.email,
-                    roles: admin.roles,
-                    role_names: admin.role_names,
-                    number: admin.number,
-                    created_at: admin.created_at,
-                    modified_at: admin.modified_at,
-                },
+                user: userData,
             },
         });
     } catch (error) {

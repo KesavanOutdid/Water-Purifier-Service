@@ -235,12 +235,19 @@ const rejectTask = async (req, res) => {
 const completeTask = async (req, res) => {
     try {
         const { task_id } = req.params;
-        const { engineer_id } = req.body;
+        const { engineer_id, device_id } = req.body;
 
         if (!engineer_id) {
             return res.status(400).json({
                 success: false,
                 message: 'engineer_id is required'
+            });
+        }
+
+        if (!device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id is required'
             });
         }
 
@@ -279,6 +286,75 @@ const completeTask = async (req, res) => {
             });
         }
 
+        const device = await db.collection('devices').findOne({ 
+            device_id: device_id.toString(),
+            status: true 
+        });
+
+        if (!device) {
+            return res.status(404).json({
+                success: false,
+                message: 'Device not found'
+            });
+        }
+
+        if (device.allotted === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device is already allotted to another customer'
+            });
+        }
+
+        if (device.model_id !== task.model_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device model does not match task model'
+            });
+        }
+
+        if (device.assigned_to !== task.distributor_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device distributor does not match task distributor'
+            });
+        }
+
+        if (device.assigned_to_local !== task.local_distributor_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device local distributor does not match task local distributor'
+            });
+        }
+
+        const photos = [];
+        if (req.files && req.files.length > 0) {
+            if (req.files.length > 3) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Maximum 3 photos are allowed'
+                });
+            }
+            req.files.forEach(file => {
+                photos.push(file.filename);
+            });
+        }
+
+        await db.collection('devices').updateOne(
+            { device_id: device_id.toString() },
+            { 
+                $set: {
+                    allotted: true,
+                    customer_name: task.customer_name,
+                    customer_phone: task.phone,
+                    customer_email: task.email,
+                    customer_address: task.address,
+                    allotted_by: engineer_id,
+                    allotted_time: new Date(),
+                    task_id: task.task_id
+                }
+            }
+        );
+
         const historyRecord = {
             action: 'complete',
             engineer_id: engineer_id,
@@ -287,22 +363,39 @@ const completeTask = async (req, res) => {
             reason: null
         };
 
+        const updateData = {
+            task_status: 'completed',
+            completed_time: new Date(),
+            device_id: device_id.toString(),
+            device_name: device.name,
+            device_model_id: device.model_id,
+            modified_by: engineer_id,
+            modified_time: new Date()
+        };
+
+        if (photos.length > 0) {
+            updateData.completion_photos = photos;
+        }
+
         await db.collection('tasks').updateOne(
             { task_id: parseInt(task_id) },
             { 
-                $set: {
-                    task_status: 'completed',
-                    completed_time: new Date(),
-                    modified_by: engineer_id,
-                    modified_time: new Date()
-                },
+                $set: updateData,
                 $push: { task_history: historyRecord }
             }
         );
 
         res.json({
             success: true,
-            message: 'Task completed successfully'
+            message: 'Task completed successfully',
+            data: {
+                photos: photos,
+                device: {
+                    device_id: device_id,
+                    device_name: device.name,
+                    model_id: device.model_id
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({

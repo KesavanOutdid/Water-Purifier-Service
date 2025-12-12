@@ -33,6 +33,13 @@ const assignDevice = async (req, res) => {
             });
         }
 
+        if (device.allotted === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device is already allotted to a customer and cannot be assigned'
+            });
+        }
+
         if (level === 'distributor') {
             if (!distributor_id) {
                 return res.status(400).json({
@@ -301,6 +308,13 @@ const reassignDevice = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Device not found'
+            });
+        }
+
+        if (device.allotted === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device is already allotted to a customer and cannot be reassigned'
             });
         }
 

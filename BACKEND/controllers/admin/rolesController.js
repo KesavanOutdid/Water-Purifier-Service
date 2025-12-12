@@ -21,14 +21,17 @@ const getRoles = async (req, res) => {
 
         const roles = await db.collection('roles')
             .find({ status: true })
-            .sort({ role_id: 1 })
+            .sort({ created_time: -1 })
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        const allRolesCount = await db.collection('roles').countDocuments({ status: true });
         
         res.json({
             success: true,
-            data: roles
+            data: roles,
+            total_count: allRolesCount
         });
     } catch (error) {
         res.status(500).json({

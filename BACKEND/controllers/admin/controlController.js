@@ -15,10 +15,13 @@ const getmodels = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
+
+        const allModelsCount = await db.collection('models').countDocuments({ status: true });
         
         res.json({
             success: true,
-            data: models
+            data: models,
+            total_count: allModelsCount
         });
     } catch (error) {
         res.status(500).json({
