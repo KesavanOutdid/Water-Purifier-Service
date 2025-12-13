@@ -37,8 +37,8 @@ const sendNotification = async (fcmToken, title, body, data = {}) => {
         return null;
     }
 
-    if (!fcmToken) {
-        console.warn('No FCM token provided. Skipping notification.');
+    if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.length < 50) {
+        console.warn('Invalid or missing FCM token. Skipping notification.', fcmToken ? `Token: ${fcmToken.substring(0, 20)}... (length: ${fcmToken.length})` : 'Token is null/undefined');
         return null;
     }
 

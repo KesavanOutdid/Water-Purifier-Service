@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
 const login = async (req, res) => {
     try {
-        const { email, password, fcm_token } = req.body;
+        const { email, password, fcmToken, fcm_token, deviceInfo } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ 
@@ -36,15 +36,25 @@ const login = async (req, res) => {
             });
         }
 
-        if (fcm_token) {
+        const tokenToSave = fcmToken || fcm_token;
+        if (tokenToSave) {
+            const updateData = { 
+                fcm_token: tokenToSave,
+                fcm_token_updated_at: new Date()
+            };
+            
+            if (deviceInfo) {
+                updateData.device_info = {
+                    device_name: deviceInfo.deviceName,
+                    os_version: deviceInfo.osVersion,
+                    app_version: deviceInfo.appVersion,
+                    last_login: new Date()
+                };
+            }
+            
             await db.collection('users').updateOne(
                 { user_id: user.user_id },
-                { 
-                    $set: { 
-                        fcm_token: fcm_token,
-                        fcm_token_updated_at: new Date()
-                    } 
-                }
+                { $set: updateData }
             );
         }
 

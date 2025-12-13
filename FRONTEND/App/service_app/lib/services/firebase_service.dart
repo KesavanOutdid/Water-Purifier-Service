@@ -18,7 +18,14 @@ class FirebaseService {
 
   FirebaseService._internal();
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _firebaseMessaging;
+
+  FirebaseMessaging get firebaseMessaging {
+    if (_firebaseMessaging == null) {
+      throw Exception('Firebase not initialized. Call initializeFirebase() first.');
+    }
+    return _firebaseMessaging!;
+  }
 
   Future<void> initializeFirebase() async {
     if (_initialized) {
@@ -33,6 +40,7 @@ class FirebaseService {
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
+      _firebaseMessaging = FirebaseMessaging.instance;
       _initialized = true;
       print('✅ Firebase initialized successfully');
 
@@ -92,7 +100,7 @@ class FirebaseService {
 
   Future<void> _requestNotificationPermission() async {
     try {
-      final settings = await _firebaseMessaging.requestPermission(
+      final settings = await firebaseMessaging.requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -122,7 +130,7 @@ class FirebaseService {
     }
 
     try {
-      final token = await _firebaseMessaging.getToken();
+      final token = await firebaseMessaging.getToken();
       if (token != null) {
         print('✅ FCM Token obtained: $token');
       } else {
@@ -137,7 +145,7 @@ class FirebaseService {
 
   Future<void> deleteToken() async {
     try {
-      await _firebaseMessaging.deleteToken();
+      await firebaseMessaging.deleteToken();
       print('✅ FCM token deleted');
     } catch (e) {
       print('❌ Error deleting FCM token: $e');
@@ -146,7 +154,7 @@ class FirebaseService {
 
   void listenToTokenRefresh(Function(String) onTokenRefresh) {
     try {
-      _firebaseMessaging.onTokenRefresh.listen((newToken) {
+      firebaseMessaging.onTokenRefresh.listen((newToken) {
         print('🔄 FCM token refreshed: $newToken');
         onTokenRefresh(newToken);
       });

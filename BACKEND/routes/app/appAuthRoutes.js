@@ -33,6 +33,23 @@ const { login } = require('../../controllers/app/appAuthController');
  *                 type: string
  *                 format: password
  *                 example: "password123"
+ *               fcmToken:
+ *                 type: string
+ *                 description: Firebase Cloud Messaging token for push notifications
+ *                 example: "eK5...xyz"
+ *               deviceInfo:
+ *                 type: object
+ *                 description: Device information
+ *                 properties:
+ *                   deviceName:
+ *                     type: string
+ *                     example: "Samsung Galaxy S21"
+ *                   osVersion:
+ *                     type: string
+ *                     example: "12.0"
+ *                   appVersion:
+ *                     type: string
+ *                     example: "1.0.0"
  *     responses:
  *       200:
  *         description: Login successful

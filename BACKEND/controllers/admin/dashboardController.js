@@ -390,11 +390,10 @@ const getDashboard = async (req, res) => {
 
             dashboardData = {
                 role: 'distributor',
-                roles_under: rolesUnderDistributor,
-                total_users_under: usersUnderDistributor,
-                users_by_role_under: usersByRole.map(r => ({ role: r._id, count: r.count })),
-                total_tasks_under: tasksUnderDistributor,
-                completed_tasks_under: completedTasksUnderDistributor,
+                total_users: usersUnderDistributor,
+                users_by_role: usersByRole.map(r => ({ role: r._id, count: r.count })),
+                total_tasks: tasksUnderDistributor,
+                total_tasks_completed: completedTasksUnderDistributor,
                 active_models: totalModels,
                 total_devices: totalDevices,
                 active_devices: activeDevices,
@@ -526,10 +525,9 @@ const getDashboard = async (req, res) => {
 
             dashboardData = {
                 role: 'local_distributor',
-                roles_under: rolesUnderLocalDistributor,
-                total_users_under: usersUnderLocalDistributor,
-                total_tasks_under: tasksUnderLocalDistributor,
-                completed_tasks_under: completedTasksUnderLocalDistributor,
+                total_users: usersUnderLocalDistributor,
+                total_tasks: tasksUnderLocalDistributor,
+                total_tasks_completed: completedTasksUnderLocalDistributor,
                 active_models: totalModels,
                 total_devices: totalDevices,
                 active_devices: activeDevices,
