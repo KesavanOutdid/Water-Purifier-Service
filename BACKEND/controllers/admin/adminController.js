@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 const { getDB } = require('../../config/database');
 const { sendLoginEmail, sendProfileUpdatedEmail } = require('../../services/emailService');
+const { clearCache } = require('../../middleware/cache');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
@@ -160,6 +161,8 @@ const updateProfile = async (req, res) => {
         };
 
         sendProfileUpdatedEmail(updatedAdmin, updateData);
+
+        await clearCache('users:*');
 
         return res.status(200).json({
             success: true,

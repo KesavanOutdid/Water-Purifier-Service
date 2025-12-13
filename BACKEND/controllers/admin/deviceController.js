@@ -1,4 +1,5 @@
 const { getDB } = require('../../config/database');
+const { clearCache } = require('../../middleware/cache');
 
 const getDevices = async (req, res) => {
     try {
@@ -33,13 +34,11 @@ const getDevices = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
-
-        const allDevicesCount = await db.collection('devices').countDocuments({ status: true });
         
         res.json({
             success: true,
             data: devices,
-            total_count: allDevicesCount
+            total_count: totalItems
         });
     } catch (error) {
         res.status(500).json({
@@ -160,6 +159,9 @@ const createDevice = async (req, res) => {
             { $inc: { quantity: -1 } }
         );
 
+        await clearCache('devices:*');
+        await clearCache('models:*');
+
         res.status(201).json({
             success: true,
             message: 'Device created successfully',
@@ -213,6 +215,8 @@ const updateDevice = async (req, res) => {
             { $set: updateData }
         );
 
+        await clearCache('devices:*');
+
         res.json({
             success: true,
             message: 'Device updated successfully'
@@ -243,6 +247,8 @@ const deleteDevice = async (req, res) => {
                 message: 'Device not found'
             });
         }
+
+        await clearCache('devices:*');
 
         res.json({
             success: true,

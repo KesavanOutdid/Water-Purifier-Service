@@ -10,7 +10,8 @@ const {
     rejectTask,
     completeTask,
     getTaskHistory,
-    getEngineerHistory
+    getEngineerHistory,
+    getDashboardStats
 } = require('../../controllers/app/appTaskController');
 
 /**
@@ -24,7 +25,7 @@ const {
  * @swagger
  * /api/app/engineer/{engineer_id}/tasks:
  *   get:
- *     summary: Get all tasks assigned to an engineer
+ *     summary: Get all tasks grouped by status for an engineer (ASSIGNED, ACCEPTED, COMPLETED, REJECTED)
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
@@ -36,22 +37,9 @@ const {
  *           type: string
  *           format: uuid
  *         description: Engineer user ID
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 100
- *         description: Number of items per page
  *     responses:
  *       200:
- *         description: Engineer tasks fetched successfully
+ *         description: Engineer tasks fetched successfully grouped by status
  *         content:
  *           application/json:
  *             schema:
@@ -61,39 +49,92 @@ const {
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       task_id:
- *                         type: integer
- *                         example: 12345
- *                       customer_name:
- *                         type: string
- *                       address:
- *                         type: string
- *                       phone:
- *                         type: string
- *                       email:
- *                         type: string
- *                       service_type:
- *                         type: integer
- *                         enum: [1, 2]
- *                       model_id:
- *                         type: string
- *                       model_name:
- *                         type: string
- *                       task_status:
- *                         type: string
- *                         enum: [created, assigned, accepted, rejected, in_progress, completed]
- *                 pagination:
  *                   type: object
+ *                   properties:
+ *                     assigned:
+ *                       type: array
+ *                       description: Tasks with status 'assigned'
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           task_id:
+ *                             type: integer
+ *                             example: 12345
+ *                           customer_name:
+ *                             type: string
+ *                           address:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           service_type:
+ *                             type: integer
+ *                             enum: [1, 2]
+ *                           model_id:
+ *                             type: string
+ *                           model_name:
+ *                             type: string
+ *                           task_status:
+ *                             type: string
+ *                             example: assigned
+ *                     accepted:
+ *                       type: array
+ *                       description: Tasks with status 'accepted' or 'in_progress'
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           task_id:
+ *                             type: integer
+ *                           customer_name:
+ *                             type: string
+ *                           task_status:
+ *                             type: string
+ *                             enum: [accepted, in_progress]
+ *                     completed:
+ *                       type: array
+ *                       description: Tasks with status 'completed'
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           task_id:
+ *                             type: integer
+ *                           customer_name:
+ *                             type: string
+ *                           task_status:
+ *                             type: string
+ *                             example: completed
+ *                           device_id:
+ *                             type: string
+ *                           completion_photos:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                     rejected:
+ *                       type: array
+ *                       description: Tasks rejected by this engineer (only shows tasks rejected by this specific engineer)
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           task_id:
+ *                             type: integer
+ *                           customer_name:
+ *                             type: string
+ *                           task_status:
+ *                             type: string
+ *                             example: rejected
+ *                           rejection_reason:
+ *                             type: string
+ *                             description: Reason provided by engineer for rejection
+ *                           task_history:
+ *                             type: array
+ *                             description: Complete task history including rejection details
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-router.get('/engineer/:engineer_id/tasks', authMiddleware, pagination, getTasksByEngineer);
+router.get('/engineer/:engineer_id/tasks', authMiddleware, getTasksByEngineer);
 
 /**
  * @swagger
@@ -443,5 +484,102 @@ router.get('/tasks/:task_id/history', authMiddleware, getTaskHistory);
  *         description: Server error
  */
 router.get('/engineer/:engineer_id/history', authMiddleware, pagination, getEngineerHistory);
+
+/**
+ * @swagger
+ * /api/app/engineer/{engineer_id}/dashboard:
+ *   get:
+ *     summary: Get dashboard statistics for an engineer (today, weekly, monthly, yearly)
+ *     tags: [App-Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: engineer_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Engineer user ID
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     today:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                           example: 5
+ *                         accepted:
+ *                           type: integer
+ *                           example: 3
+ *                         assigned:
+ *                           type: integer
+ *                           example: 2
+ *                         rejected:
+ *                           type: integer
+ *                           example: 1
+ *                     week:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                           example: 25
+ *                         accepted:
+ *                           type: integer
+ *                           example: 10
+ *                         assigned:
+ *                           type: integer
+ *                           example: 8
+ *                         rejected:
+ *                           type: integer
+ *                           example: 3
+ *                     month:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                           example: 100
+ *                         accepted:
+ *                           type: integer
+ *                           example: 40
+ *                         assigned:
+ *                           type: integer
+ *                           example: 30
+ *                         rejected:
+ *                           type: integer
+ *                           example: 10
+ *                     year:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                           example: 500
+ *                         accepted:
+ *                           type: integer
+ *                           example: 200
+ *                         assigned:
+ *                           type: integer
+ *                           example: 150
+ *                         rejected:
+ *                           type: integer
+ *                           example: 50
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats);
 
 module.exports = router;

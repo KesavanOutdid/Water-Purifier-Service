@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, fcm_token } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ 
@@ -34,6 +34,18 @@ const login = async (req, res) => {
                 success: false, 
                 message: 'Invalid credentials' 
             });
+        }
+
+        if (fcm_token) {
+            await db.collection('users').updateOne(
+                { user_id: user.user_id },
+                { 
+                    $set: { 
+                        fcm_token: fcm_token,
+                        fcm_token_updated_at: new Date()
+                    } 
+                }
+            );
         }
 
         const token = jwt.sign({ 

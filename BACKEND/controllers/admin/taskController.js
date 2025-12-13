@@ -1,4 +1,6 @@
 const { getDB } = require('../../config/database');
+const { clearCache } = require('../../middleware/cache');
+const { sendNotification } = require('../../config/firebase');
 
 const generateTaskId = async (db) => {
     let taskId;
@@ -161,6 +163,8 @@ const createTask = async (req, res) => {
 
         const result = await db.collection('tasks').insertOne(newTask);
 
+        await clearCache('tasks:*');
+
         res.status(201).json({
             success: true,
             message: 'Task created successfully',
@@ -262,13 +266,8 @@ const getServices = async (req, res) => {
             .limit(limit)
             .toArray();
 
-        const allServicesCount = await db.collection('tasks').countDocuments({ 
-            status: true, 
-            service_type: 2 
-        });
-
         const statusCounts = await db.collection('tasks').aggregate([
-            { $match: { status: true, service_type: 2 } },
+            { $match: query },
             { $group: { _id: '$task_status', count: { $sum: 1 } } }
         ]).toArray();
 
@@ -280,7 +279,7 @@ const getServices = async (req, res) => {
         res.json({
             success: true,
             data: tasks,
-            total_count: allServicesCount,
+            total_count: totalItems,
             status_counts: statusSummary
         });
     } catch (error) {
@@ -333,13 +332,8 @@ const getInstallation = async (req, res) => {
             .limit(limit)
             .toArray();
 
-        const allInstallationCount = await db.collection('tasks').countDocuments({ 
-            status: true, 
-            service_type: 1 
-        });
-
         const statusCounts = await db.collection('tasks').aggregate([
-            { $match: { status: true, service_type: 1 } },
+            { $match: query },
             { $group: { _id: '$task_status', count: { $sum: 1 } } }
         ]).toArray();
 
@@ -351,7 +345,7 @@ const getInstallation = async (req, res) => {
         res.json({
             success: true,
             data: tasks,
-            total_count: allInstallationCount,
+            total_count: totalItems,
             status_counts: statusSummary
         });
     } catch (error) {
@@ -441,6 +435,22 @@ const assignTask = async (req, res) => {
                 $push: { task_history: historyRecord }
             }
         );
+
+        await clearCache('tasks:*');
+
+        if (engineer.fcm_token) {
+            await sendNotification(
+                engineer.fcm_token,
+                'New Task Assigned',
+                `Task #${task_id} has been assigned to you - ${task.customer_name}`,
+                {
+                    task_id: task_id.toString(),
+                    type: 'task_assigned',
+                    customer_name: task.customer_name,
+                    service_type: task.service_type
+                }
+            );
+        }
 
         res.json({
             success: true,
@@ -540,6 +550,23 @@ const reassignTask = async (req, res) => {
                 $push: { task_history: historyRecord }
             }
         );
+
+        await clearCache('tasks:*');
+
+        if (newEngineer.fcm_token) {
+            await sendNotification(
+                newEngineer.fcm_token,
+                'Task Reassigned to You',
+                `Task #${task_id} has been reassigned to you - ${task.customer_name}`,
+                {
+                    task_id: task_id.toString(),
+                    type: 'task_reassigned',
+                    customer_name: task.customer_name,
+                    service_type: task.service_type,
+                    previous_engineer: task.engineer_name
+                }
+            );
+        }
 
         res.json({
             success: true,

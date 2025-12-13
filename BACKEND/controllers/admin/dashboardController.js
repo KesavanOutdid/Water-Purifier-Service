@@ -42,6 +42,33 @@ const getDashboard = async (req, res) => {
                 task_status: 'completed' 
             });
 
+            const totalModels = await db.collection('models').countDocuments({ status: true });
+            const totalDevices = await db.collection('devices').countDocuments({});
+            const activeDevices = await db.collection('devices').countDocuments({ status: true });
+
+            const modelDeviceCounts = await db.collection('devices').aggregate([
+                { $match: { status: true } },
+                { $group: { _id: '$model_id', device_count: { $sum: 1 } } },
+                {
+                    $lookup: {
+                        from: 'models',
+                        localField: '_id',
+                        foreignField: 'uid',
+                        as: 'model_info'
+                    }
+                },
+                { $unwind: { path: '$model_info', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        model_id: '$_id',
+                        model_name: '$model_info.name',
+                        device_count: 1,
+                        _id: 0
+                    }
+                },
+                { $sort: { device_count: -1 } }
+            ]).toArray();
+
             const usersByRole = await db.collection('users').aggregate([
                 { $match: { status: true } },
                 { $unwind: '$roles' },
@@ -74,81 +101,109 @@ const getDashboard = async (req, res) => {
                 roles: 2 
             }).toArray();
 
-            const topDistributors = await Promise.all(
-                distributors.map(async (dist) => {
-                    const taskQuery = { 
-                        status: true, 
-                        distributor_id: dist.user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: dist.user_id,
-                        name: dist.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
-
-            topDistributors.sort((a, b) => b.total_tasks - a.total_tasks);
+            const calculateTopDistributors = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    distributors.map(async (dist) => {
+                        const taskQuery = { 
+                            status: true, 
+                            distributor_id: dist.user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: dist.user_id,
+                            name: dist.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
             const localDistributors = await db.collection('users').find({ 
                 status: true, 
                 roles: 3 
             }).toArray();
 
-            const topLocalDistributors = await Promise.all(
-                localDistributors.map(async (ldist) => {
-                    const taskQuery = { 
-                        status: true, 
-                        local_distributor_id: ldist.user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: ldist.user_id,
-                        name: ldist.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
-
-            topLocalDistributors.sort((a, b) => b.total_tasks - a.total_tasks);
+            const calculateTopLocalDistributors = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    localDistributors.map(async (ldist) => {
+                        const taskQuery = { 
+                            status: true, 
+                            local_distributor_id: ldist.user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: ldist.user_id,
+                            name: ldist.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
             const engineers = await db.collection('users').find({ 
                 status: true, 
                 roles: 4 
             }).toArray();
 
-            const topEngineers = await Promise.all(
-                engineers.map(async (eng) => {
-                    const taskQuery = { 
-                        status: true, 
-                        assigned_to: eng.user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: eng.user_id,
-                        name: eng.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
+            const calculateTopEngineers = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    engineers.map(async (eng) => {
+                        const taskQuery = { 
+                            status: true, 
+                            assigned_to: eng.user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: eng.user_id,
+                            name: eng.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
-            topEngineers.sort((a, b) => b.total_tasks - a.total_tasks);
+            const [
+                todayTopDistributors, weekTopDistributors, monthTopDistributors, yearTopDistributors,
+                todayTopLocalDistributors, weekTopLocalDistributors, monthTopLocalDistributors, yearTopLocalDistributors,
+                todayTopEngineers, weekTopEngineers, monthTopEngineers, yearTopEngineers
+            ] = await Promise.all([
+                calculateTopDistributors(startOfDay),
+                calculateTopDistributors(startOfWeek),
+                calculateTopDistributors(startOfMonth),
+                calculateTopDistributors(startOfYear),
+                calculateTopLocalDistributors(startOfDay),
+                calculateTopLocalDistributors(startOfWeek),
+                calculateTopLocalDistributors(startOfMonth),
+                calculateTopLocalDistributors(startOfYear),
+                calculateTopEngineers(startOfDay),
+                calculateTopEngineers(startOfWeek),
+                calculateTopEngineers(startOfMonth),
+                calculateTopEngineers(startOfYear)
+            ]);
 
             dashboardData = {
                 role: 'admin',
@@ -156,14 +211,27 @@ const getDashboard = async (req, res) => {
                 total_users: totalUsers,
                 total_tasks: totalTasks,
                 total_tasks_completed: totalTasksCompleted,
+                active_models: totalModels,
+                total_devices: totalDevices,
+                active_devices: activeDevices,
+                model_device_counts: modelDeviceCounts,
                 today_tasks: todayTasks,
                 week_tasks: weekTasks,
                 month_tasks: monthTasks,
                 year_tasks: yearTasks,
                 users_by_role: usersByRole.map(r => ({ role: r._id, count: r.count })),
-                top_5_distributors: topDistributors.slice(0, 5),
-                top_5_local_distributors: topLocalDistributors.slice(0, 5),
-                top_5_engineers: topEngineers.slice(0, 5)
+                today_top_5_distributors: todayTopDistributors,
+                week_top_5_distributors: weekTopDistributors,
+                month_top_5_distributors: monthTopDistributors,
+                year_top_5_distributors: yearTopDistributors,
+                today_top_5_local_distributors: todayTopLocalDistributors,
+                week_top_5_local_distributors: weekTopLocalDistributors,
+                month_top_5_local_distributors: monthTopLocalDistributors,
+                year_top_5_local_distributors: yearTopLocalDistributors,
+                today_top_5_engineers: todayTopEngineers,
+                week_top_5_engineers: weekTopEngineers,
+                month_top_5_engineers: monthTopEngineers,
+                year_top_5_engineers: yearTopEngineers
             };
 
         } else if (requestingUser.roles && requestingUser.roles.includes(2)) {
@@ -216,33 +284,63 @@ const getDashboard = async (req, res) => {
                 created_time: { $gte: startOfYear }
             });
 
+            const totalModels = await db.collection('models').countDocuments({ status: true });
+            const totalDevices = await db.collection('devices').countDocuments({ assigned_to: user_id });
+            const activeDevices = await db.collection('devices').countDocuments({ assigned_to: user_id, status: true });
+
+            const modelDeviceCounts = await db.collection('devices').aggregate([
+                { $match: { assigned_to: user_id, status: true } },
+                { $group: { _id: '$model_id', device_count: { $sum: 1 } } },
+                {
+                    $lookup: {
+                        from: 'models',
+                        localField: '_id',
+                        foreignField: 'uid',
+                        as: 'model_info'
+                    }
+                },
+                { $unwind: { path: '$model_info', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        model_id: '$_id',
+                        model_name: '$model_info.name',
+                        device_count: 1,
+                        _id: 0
+                    }
+                },
+                { $sort: { device_count: -1 } }
+            ]).toArray();
+
             const localDistributorsUnder = await db.collection('users').find({
                 status: true,
                 distributor: user_id,
                 roles: 3
             }).toArray();
 
-            const topLocalDistributors = await Promise.all(
-                localDistributorsUnder.map(async (ldist) => {
-                    const taskQuery = { 
-                        status: true, 
-                        local_distributor_id: ldist.user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: ldist.user_id,
-                        name: ldist.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
-
-            topLocalDistributors.sort((a, b) => b.total_tasks - a.total_tasks);
+            const calculateTopLocalDistributorsUnder = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    localDistributorsUnder.map(async (ldist) => {
+                        const taskQuery = { 
+                            status: true, 
+                            local_distributor_id: ldist.user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: ldist.user_id,
+                            name: ldist.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
             const engineersUnder = await db.collection('users').find({
                 status: true,
@@ -250,28 +348,45 @@ const getDashboard = async (req, res) => {
                 roles: 4
             }).toArray();
 
-            const topEngineers = await Promise.all(
-                engineersUnder.map(async (eng) => {
-                    const taskQuery = { 
-                        status: true, 
-                        assigned_to: eng.user_id,
-                        distributor_id: user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: eng.user_id,
-                        name: eng.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
+            const calculateTopEngineersUnder = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    engineersUnder.map(async (eng) => {
+                        const taskQuery = { 
+                            status: true, 
+                            assigned_to: eng.user_id,
+                            distributor_id: user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: eng.user_id,
+                            name: eng.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
-            topEngineers.sort((a, b) => b.total_tasks - a.total_tasks);
+            const [
+                todayTopLocalDistributors, weekTopLocalDistributors, monthTopLocalDistributors, yearTopLocalDistributors,
+                todayTopEngineers, weekTopEngineers, monthTopEngineers, yearTopEngineers
+            ] = await Promise.all([
+                calculateTopLocalDistributorsUnder(startOfDay),
+                calculateTopLocalDistributorsUnder(startOfWeek),
+                calculateTopLocalDistributorsUnder(startOfMonth),
+                calculateTopLocalDistributorsUnder(startOfYear),
+                calculateTopEngineersUnder(startOfDay),
+                calculateTopEngineersUnder(startOfWeek),
+                calculateTopEngineersUnder(startOfMonth),
+                calculateTopEngineersUnder(startOfYear)
+            ]);
 
             dashboardData = {
                 role: 'distributor',
@@ -280,12 +395,22 @@ const getDashboard = async (req, res) => {
                 users_by_role_under: usersByRole.map(r => ({ role: r._id, count: r.count })),
                 total_tasks_under: tasksUnderDistributor,
                 completed_tasks_under: completedTasksUnderDistributor,
+                active_models: totalModels,
+                total_devices: totalDevices,
+                active_devices: activeDevices,
+                model_device_counts: modelDeviceCounts,
                 today_tasks: todayTasks,
                 week_tasks: weekTasks,
                 month_tasks: monthTasks,
                 year_tasks: yearTasks,
-                top_5_local_distributors: topLocalDistributors.slice(0, 5),
-                top_5_engineers: topEngineers.slice(0, 5)
+                today_top_5_local_distributors: todayTopLocalDistributors,
+                week_top_5_local_distributors: weekTopLocalDistributors,
+                month_top_5_local_distributors: monthTopLocalDistributors,
+                year_top_5_local_distributors: yearTopLocalDistributors,
+                today_top_5_engineers: todayTopEngineers,
+                week_top_5_engineers: weekTopEngineers,
+                month_top_5_engineers: monthTopEngineers,
+                year_top_5_engineers: yearTopEngineers
             };
 
         } else if (requestingUser.roles && requestingUser.roles.includes(3)) {
@@ -331,34 +456,73 @@ const getDashboard = async (req, res) => {
                 created_time: { $gte: startOfYear }
             });
 
+            const totalModels = await db.collection('models').countDocuments({ status: true });
+            const totalDevices = await db.collection('devices').countDocuments({ assigned_to_local: user_id });
+            const activeDevices = await db.collection('devices').countDocuments({ assigned_to_local: user_id, status: true });
+
+            const modelDeviceCounts = await db.collection('devices').aggregate([
+                { $match: { assigned_to_local: user_id, status: true } },
+                { $group: { _id: '$model_id', device_count: { $sum: 1 } } },
+                {
+                    $lookup: {
+                        from: 'models',
+                        localField: '_id',
+                        foreignField: 'uid',
+                        as: 'model_info'
+                    }
+                },
+                { $unwind: { path: '$model_info', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        model_id: '$_id',
+                        model_name: '$model_info.name',
+                        device_count: 1,
+                        _id: 0
+                    }
+                },
+                { $sort: { device_count: -1 } }
+            ]).toArray();
+
             const engineersUnder = await db.collection('users').find({
                 status: true,
                 local_distributor: user_id,
                 roles: 4
             }).toArray();
 
-            const topEngineers = await Promise.all(
-                engineersUnder.map(async (eng) => {
-                    const taskQuery = { 
-                        status: true, 
-                        assigned_to: eng.user_id,
-                        local_distributor_id: user_id
-                    };
-                    const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
-                    const completedTasks = await db.collection('tasks').countDocuments({ 
-                        ...taskQuery, 
-                        task_status: 'completed' 
-                    });
-                    return {
-                        user_id: eng.user_id,
-                        name: eng.name,
-                        total_tasks: totalTasks,
-                        completed_tasks: completedTasks
-                    };
-                })
-            );
+            const calculateTopEngineersUnder = async (timeFilter = null) => {
+                const results = await Promise.all(
+                    engineersUnder.map(async (eng) => {
+                        const taskQuery = { 
+                            status: true, 
+                            assigned_to: eng.user_id,
+                            local_distributor_id: user_id,
+                            ...(timeFilter && { created_time: { $gte: timeFilter } })
+                        };
+                        const totalTasks = await db.collection('tasks').countDocuments(taskQuery);
+                        const completedTasks = await db.collection('tasks').countDocuments({ 
+                            ...taskQuery, 
+                            task_status: 'completed' 
+                        });
+                        return {
+                            user_id: eng.user_id,
+                            name: eng.name,
+                            total_tasks: totalTasks,
+                            completed_tasks: completedTasks
+                        };
+                    })
+                );
+                results.sort((a, b) => b.total_tasks - a.total_tasks);
+                return results.slice(0, 5);
+            };
 
-            topEngineers.sort((a, b) => b.total_tasks - a.total_tasks);
+            const [
+                todayTopEngineers, weekTopEngineers, monthTopEngineers, yearTopEngineers
+            ] = await Promise.all([
+                calculateTopEngineersUnder(startOfDay),
+                calculateTopEngineersUnder(startOfWeek),
+                calculateTopEngineersUnder(startOfMonth),
+                calculateTopEngineersUnder(startOfYear)
+            ]);
 
             dashboardData = {
                 role: 'local_distributor',
@@ -366,11 +530,18 @@ const getDashboard = async (req, res) => {
                 total_users_under: usersUnderLocalDistributor,
                 total_tasks_under: tasksUnderLocalDistributor,
                 completed_tasks_under: completedTasksUnderLocalDistributor,
+                active_models: totalModels,
+                total_devices: totalDevices,
+                active_devices: activeDevices,
+                model_device_counts: modelDeviceCounts,
                 today_tasks: todayTasks,
                 week_tasks: weekTasks,
                 month_tasks: monthTasks,
                 year_tasks: yearTasks,
-                top_5_engineers: topEngineers.slice(0, 5)
+                today_top_5_engineers: todayTopEngineers,
+                week_top_5_engineers: weekTopEngineers,
+                month_top_5_engineers: monthTopEngineers,
+                year_top_5_engineers: yearTopEngineers
             };
 
         } else {

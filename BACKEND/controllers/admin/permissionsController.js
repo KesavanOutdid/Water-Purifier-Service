@@ -1,6 +1,7 @@
 const { getDB } = require('../../config/database');
 const { ObjectId } = require('mongodb');
 const MODULES = require('../../config/moduleConfig');
+const { clearCache } = require('../../middleware/cache');
 
 const getModules = async (req, res) => {
     try {
@@ -65,6 +66,8 @@ const assignBulkPermissions = async (req, res) => {
                 results.push({ action: 'created', permission: permissionDoc });
             }
         }
+
+        await clearCache('permissions:*');
 
         res.status(200).json({
             success: true,
@@ -153,6 +156,8 @@ const updatePermission = async (req, res) => {
                 message: 'Permission not found'
             });
         }
+
+        await clearCache('permissions:*');
 
         res.json({
             success: true,

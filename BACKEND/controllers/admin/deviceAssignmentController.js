@@ -1,4 +1,5 @@
 const { getDB } = require('../../config/database');
+const { clearCache } = require('../../middleware/cache');
 
 const assignDevice = async (req, res) => {
     try {
@@ -92,6 +93,8 @@ const assignDevice = async (req, res) => {
                 }
             );
 
+            await clearCache('devices:*');
+
             res.json({
                 success: true,
                 message: 'Device assigned to distributor successfully'
@@ -155,6 +158,8 @@ const assignDevice = async (req, res) => {
                     $push: { assignment_history: assignmentRecord }
                 }
             );
+
+            await clearCache('devices:*');
 
             res.json({
                 success: true,
@@ -264,6 +269,8 @@ const unassignDevice = async (req, res) => {
                 $push: { assignment_history: assignmentRecord }
             }
         );
+
+        await clearCache('devices:*');
 
         res.json({
             success: true,
@@ -380,6 +387,8 @@ const reassignDevice = async (req, res) => {
                 }
             );
 
+            await clearCache('devices:*');
+
             res.json({
                 success: true,
                 message: 'Device reassigned to new distributor successfully'
@@ -451,6 +460,8 @@ const reassignDevice = async (req, res) => {
                     $push: { assignment_history: assignmentRecord }
                 }
             );
+
+            await clearCache('devices:*');
 
             res.json({
                 success: true,

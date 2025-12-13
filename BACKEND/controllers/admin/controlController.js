@@ -1,5 +1,6 @@
 const { getDB } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
+const { clearCache } = require('../../middleware/cache');
 
 const getmodels = async (req, res) => {
     try {
@@ -15,13 +16,11 @@ const getmodels = async (req, res) => {
             .skip(skip)
             .limit(limit)
             .toArray();
-
-        const allModelsCount = await db.collection('models').countDocuments({ status: true });
         
         res.json({
             success: true,
             data: models,
-            total_count: allModelsCount
+            total_count: totalItems
         });
     } catch (error) {
         res.status(500).json({
@@ -99,6 +98,8 @@ const createControl = async (req, res) => {
 
         const result = await db.collection('models').insertOne(newControl);
 
+        await clearCache('models:*');
+
         res.status(201).json({
             success: true,
             message: 'Control created successfully',
@@ -160,6 +161,8 @@ const updateControl = async (req, res) => {
             });
         }
 
+        await clearCache('models:*');
+
         res.json({
             success: true,
             message: 'Control updated successfully'
@@ -190,6 +193,8 @@ const deleteControl = async (req, res) => {
                 message: 'Control not found'
             });
         }
+
+        await clearCache('models:*');
 
         res.json({
             success: true,

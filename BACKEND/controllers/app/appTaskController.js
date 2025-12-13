@@ -1,29 +1,75 @@
 const { getDB } = require('../../config/database');
+const { clearCache } = require('../../middleware/cache');
 
 const getTasksByEngineer = async (req, res) => {
     try {
         const { engineer_id } = req.params;
-        const { page, limit, skip } = req.pagination;
         const db = getDB();
 
-        const query = { 
+        const assignedQuery = { 
             assigned_to: engineer_id,
+            task_status: 'assigned',
             status: true 
         };
 
-        const totalItems = await db.collection('tasks').countDocuments(query);
-        req.paginationTotal = totalItems;
+        const acceptedQuery = { 
+            assigned_to: engineer_id,
+            task_status: { $in: ['accepted', 'in_progress'] },
+            status: true 
+        };
 
-        const tasks = await db.collection('tasks')
-            .find(query)
-            .sort({ assigned_time: -1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
-        
+        const completedQuery = { 
+            assigned_to: engineer_id,
+            task_status: 'completed',
+            status: true 
+        };
+
+        const rejectedQuery = {
+            'task_history.engineer_id': engineer_id,
+            'task_history.action': 'reject',
+            status: true
+        };
+
+        const [assignedTasks, acceptedTasks, completedTasks, rejectedTasksAll] = await Promise.all([
+            db.collection('tasks').find(assignedQuery).sort({ assigned_time: -1 }).toArray(),
+            db.collection('tasks').find(acceptedQuery).sort({ assigned_time: -1 }).toArray(),
+            db.collection('tasks').find(completedQuery).sort({ completed_time: -1 }).toArray(),
+            db.collection('tasks').find(rejectedQuery).sort({ modified_time: -1 }).toArray()
+        ]);
+
+        const rejectedTasks = rejectedTasksAll
+            .filter(task => {
+                const rejectionHistory = task.task_history.find(
+                    h => h.action === 'reject' && h.engineer_id === engineer_id
+                );
+                return rejectionHistory !== undefined;
+            })
+            .map(task => {
+                const myRejection = task.task_history.find(
+                    h => h.action === 'reject' && h.engineer_id === engineer_id
+                );
+                return {
+                    task_id: task.task_id,
+                    customer_name: task.customer_name,
+                    address: task.address,
+                    phone: task.phone,
+                    email: task.email,
+                    service_type: task.service_type,
+                    model_id: task.model_id,
+                    model_name: task.model_name,
+                    rejection_reason: myRejection.reason,
+                    rejected_at: myRejection.timestamp
+                };
+            });
+
         res.json({
             success: true,
-            data: tasks
+            data: {
+                assigned: assignedTasks,
+                accepted: acceptedTasks,
+                completed: completedTasks,
+                rejected: rejectedTasks
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -131,6 +177,8 @@ const acceptTask = async (req, res) => {
             }
         );
 
+        await clearCache('tasks:*');
+
         res.json({
             success: true,
             message: 'Task accepted successfully'
@@ -218,6 +266,8 @@ const rejectTask = async (req, res) => {
                 $push: { task_history: historyRecord }
             }
         );
+
+        await clearCache('tasks:*');
 
         res.json({
             success: true,
@@ -385,6 +435,8 @@ const completeTask = async (req, res) => {
             }
         );
 
+        await clearCache('tasks:*');
+
         res.json({
             success: true,
             message: 'Task completed successfully',
@@ -494,6 +546,75 @@ const getEngineerHistory = async (req, res) => {
     }
 };
 
+const getDashboardStats = async (req, res) => {
+    try {
+        const { engineer_id } = req.params;
+        const db = getDB();
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const yearStart = new Date(now.getFullYear(), 0, 1);
+
+        const getStats = async (startDate) => {
+            const [completed, accepted, assigned, rejected] = await Promise.all([
+                db.collection('tasks').countDocuments({
+                    assigned_to: engineer_id,
+                    task_status: 'completed',
+                    status: true,
+                    completed_time: { $gte: startDate }
+                }),
+                db.collection('tasks').countDocuments({
+                    assigned_to: engineer_id,
+                    task_status: { $in: ['accepted', 'in_progress'] },
+                    status: true,
+                    modified_time: { $gte: startDate }
+                }),
+                db.collection('tasks').countDocuments({
+                    assigned_to: engineer_id,
+                    task_status: 'assigned',
+                    status: true,
+                    assigned_time: { $gte: startDate }
+                }),
+                db.collection('tasks').countDocuments({
+                    'task_history.engineer_id': engineer_id,
+                    'task_history.action': 'reject',
+                    status: true,
+                    'task_history.timestamp': { $gte: startDate }
+                })
+            ]);
+
+            return { completed, accepted, assigned, rejected };
+        };
+
+        const [today, week, month, year] = await Promise.all([
+            getStats(todayStart),
+            getStats(weekStart),
+            getStats(monthStart),
+            getStats(yearStart)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                today,
+                week,
+                month,
+                year
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching dashboard statistics',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getTasksByEngineer,
     getTaskById,
@@ -501,5 +622,6 @@ module.exports = {
     rejectTask,
     completeTask,
     getTaskHistory,
-    getEngineerHistory
+    getEngineerHistory,
+    getDashboardStats
 };

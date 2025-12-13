@@ -3,6 +3,7 @@ const { getDB } = require('../../config/database');
 const { sendProfileUpdatedEmail } = require('../../services/emailService');
 const path = require('path');
 const fs = require('fs');
+const { clearCache } = require('../../middleware/cache');
 
 const getProfile = async (req, res) => {
     try {
@@ -105,6 +106,8 @@ const updateProfile = async (req, res) => {
 
         sendProfileUpdatedEmail(updatedUser, updateData);
 
+        await clearCache('users:*');
+
         return res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
@@ -192,6 +195,8 @@ const uploadProfilePicture = async (req, res) => {
                 }
             }
         );
+
+        await clearCache('users:*');
 
         return res.status(200).json({
             success: true,

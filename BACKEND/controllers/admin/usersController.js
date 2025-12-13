@@ -41,13 +41,11 @@ const getUsers = async (req, res) => {
             ...user,
             password: undefined
         }));
-
-        const allUsersCount = await db.collection('users').countDocuments({ status: true });
  
         res.json({
             success: true,
             data: usersWithoutPassword,
-            total_count: allUsersCount
+            total_count: totalItems
         });
     } catch (error) {
         res.status(500).json({

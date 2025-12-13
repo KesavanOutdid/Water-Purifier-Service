@@ -1,6 +1,6 @@
 const { getRedisClient } = require('../config/redis');
 
-const cacheMiddleware = (keyPrefix, ttl = 300) => {
+const cacheMiddleware = (keyPrefix, ttl = 120) => {
     return async (req, res, next) => {
         const redisClient = getRedisClient();
         

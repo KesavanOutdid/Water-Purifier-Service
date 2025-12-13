@@ -8,6 +8,8 @@ BACKEND/Log/*.log
 BACKEND/logs/*.log
 *.log
 
+# Firebase
+BACKEND/firebase-serviceAccountKey.json
 
 # MacOS system files
 .DS_Store
