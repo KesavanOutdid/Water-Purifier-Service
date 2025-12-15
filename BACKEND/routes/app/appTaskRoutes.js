@@ -11,7 +11,8 @@ const {
     completeTask,
     getTaskHistory,
     getEngineerHistory,
-    getDashboardStats
+    getDashboardStats,
+    configureDevice
 } = require('../../controllers/app/appTaskController');
 
 /**
@@ -334,7 +335,7 @@ router.post('/tasks/:task_id/reject', authMiddleware, rejectTask);
  * @swagger
  * /api/app/tasks/{task_id}/complete:
  *   post:
- *     summary: Mark task as completed with device allotment and photos (max 3)
+ *     summary: Mark task as completed with device allotment and photos (max 3) - MAC ID must be configured first
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
@@ -406,7 +407,7 @@ router.post('/tasks/:task_id/reject', authMiddleware, rejectTask);
  *                           type: string
  *                           format: uuid
  *       400:
- *         description: Validation error or invalid task status or more than 3 photos or device already allotted
+ *         description: Validation error or invalid task status or more than 3 photos or device already allotted or MAC ID not configured
  *       401:
  *         description: Unauthorized
  *       403:
@@ -450,7 +451,8 @@ router.get('/tasks/:task_id/history', authMiddleware, getTaskHistory);
  * @swagger
  * /api/app/engineer/{engineer_id}/history:
  *   get:
- *     summary: Get engineer's complete task history
+ *     summary: Get all tasks grouped by status for an engineer (same format as /tasks endpoint)
+ *     description: Returns all tasks grouped into assigned, accepted, completed, and rejected categories
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
@@ -462,34 +464,52 @@ router.get('/tasks/:task_id/history', authMiddleware, getTaskHistory);
  *           type: string
  *           format: uuid
  *         description: Engineer user ID
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 100
- *         description: Number of items per page
  *     responses:
  *       200:
- *         description: Engineer history fetched successfully
+ *         description: Engineer tasks fetched successfully grouped by status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     assigned:
+ *                       type: array
+ *                       description: Tasks with status 'assigned'
+ *                     accepted:
+ *                       type: array
+ *                       description: Tasks with status 'accepted' or 'in_progress'
+ *                     completed:
+ *                       type: array
+ *                       description: Tasks with status 'completed'
+ *                     rejected:
+ *                       type: array
+ *                       description: Tasks rejected by this engineer
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-router.get('/engineer/:engineer_id/history', authMiddleware, pagination, getEngineerHistory);
+router.get('/engineer/:engineer_id/history', authMiddleware, getEngineerHistory);
 
 /**
  * @swagger
  * /api/app/engineer/{engineer_id}/dashboard:
  *   get:
- *     summary: Get dashboard statistics for an engineer (today, weekly, monthly, yearly)
+ *     summary: Get engineer dashboard with task analytics
+ *     description: |
+ *       Returns task statistics with the following structure:
+ *       - **current_day**: Hourly breakdown (0-23) for today
+ *       - **current_week**: Daily breakdown (Sunday-Saturday) for current week
+ *       - **current_year**: Monthly breakdown (January-December) for current year
+ *       - **yearly**: Year-by-year totals for all years with data
+ *       
+ *       Add `?useMock=true` query parameter to get mock data instead of real data.
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
@@ -501,6 +521,13 @@ router.get('/engineer/:engineer_id/history', authMiddleware, pagination, getEngi
  *           type: string
  *           format: uuid
  *         description: Engineer user ID
+ *       - in: query
+ *         name: useMock
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Set to 'true' to use mock data (includes data for 2024 and 2025)
  *     responses:
  *       200:
  *         description: Dashboard statistics fetched successfully
@@ -515,71 +542,146 @@ router.get('/engineer/:engineer_id/history', authMiddleware, pagination, getEngi
  *                 data:
  *                   type: object
  *                   properties:
- *                     today:
+ *                     current_day:
  *                       type: object
  *                       properties:
- *                         completed:
- *                           type: integer
- *                           example: 5
- *                         accepted:
- *                           type: integer
- *                           example: 3
- *                         assigned:
- *                           type: integer
- *                           example: 2
- *                         rejected:
- *                           type: integer
- *                           example: 1
- *                     week:
+ *                         date:
+ *                           type: string
+ *                           example: "2025-01-15"
+ *                         hours:
+ *                           type: object
+ *                           description: Hours 0-23 with task counts
+ *                           example: {"0": {"completed": 2, "accepted": 2, "rejected": 0}, "10": {"completed": 10, "accepted": 9, "rejected": 1}}
+ *                         total:
+ *                           type: object
+ *                           properties:
+ *                             completed:
+ *                               type: integer
+ *                             accepted:
+ *                               type: integer
+ *                             rejected:
+ *                               type: integer
+ *                     current_week:
  *                       type: object
  *                       properties:
- *                         completed:
- *                           type: integer
- *                           example: 25
- *                         accepted:
- *                           type: integer
- *                           example: 10
- *                         assigned:
- *                           type: integer
- *                           example: 8
- *                         rejected:
- *                           type: integer
- *                           example: 3
- *                     month:
+ *                         week_range:
+ *                           type: string
+ *                           example: "2025-01-12 to 2025-01-18"
+ *                         days:
+ *                           type: object
+ *                           description: Days Sunday-Saturday with task counts
+ *                           example: {"Sunday": {"completed": 34, "accepted": 32, "rejected": 2}, "Monday": {"completed": 41, "accepted": 38, "rejected": 3}}
+ *                         total:
+ *                           type: object
+ *                           properties:
+ *                             completed:
+ *                               type: integer
+ *                             accepted:
+ *                               type: integer
+ *                             rejected:
+ *                               type: integer
+ *                     current_year:
  *                       type: object
  *                       properties:
- *                         completed:
+ *                         year:
  *                           type: integer
- *                           example: 100
- *                         accepted:
- *                           type: integer
- *                           example: 40
- *                         assigned:
- *                           type: integer
- *                           example: 30
- *                         rejected:
- *                           type: integer
- *                           example: 10
- *                     year:
+ *                           example: 2025
+ *                         months:
+ *                           type: object
+ *                           description: Months January-December with task counts
+ *                           example: {"January": {"completed": 620, "accepted": 590, "rejected": 30}, "February": {"completed": 580, "accepted": 553, "rejected": 27}}
+ *                         total:
+ *                           type: object
+ *                           properties:
+ *                             completed:
+ *                               type: integer
+ *                             accepted:
+ *                               type: integer
+ *                             rejected:
+ *                               type: integer
+ *                     yearly:
  *                       type: object
- *                       properties:
- *                         completed:
- *                           type: integer
- *                           example: 500
- *                         accepted:
- *                           type: integer
- *                           example: 200
- *                         assigned:
- *                           type: integer
- *                           example: 150
- *                         rejected:
- *                           type: integer
- *                           example: 50
+ *                       description: Year-by-year totals
+ *                       example: {"2024": {"completed": 8100, "accepted": 7750, "rejected": 350}, "2025": {"completed": 9010, "accepted": 8605, "rejected": 405}}
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats);
+
+/**
+ * @swagger
+ * /api/app/tasks/{task_id}/configure:
+ *   post:
+ *     summary: Configure device MAC ID for task (save MAC ID before completing task)
+ *     tags: [App-Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: task_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 5-digit Task ID
+ *         example: 12345
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - engineer_id
+ *               - mac_id
+ *             properties:
+ *               engineer_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                 description: Engineer user ID
+ *               mac_id:
+ *                 type: string
+ *                 example: "AA:BB:CC:DD:EE:FF"
+ *                 description: Device MAC Address
+ *     responses:
+ *       200:
+ *         description: MAC ID configured successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device MAC ID configured successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     task_id:
+ *                       type: integer
+ *                       example: 12345
+ *                     mac_id:
+ *                       type: string
+ *                       example: "AA:BB:CC:DD:EE:FF"
+ *                     configured_time:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Validation error or MAC ID already set or task already completed or task not accepted/in_progress
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Task not assigned to this engineer
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/tasks/:task_id/configure', authMiddleware, configureDevice);
 
 module.exports = router;

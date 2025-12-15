@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { getDB } = require('../../config/database');
 const { sendLoginEmail } = require('../../services/emailService');
+const logger = require('../../config/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
@@ -99,7 +100,7 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('App login failed:', error);
+        logger.error('App login failed:', error);
         return res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error' 

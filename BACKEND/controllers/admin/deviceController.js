@@ -149,7 +149,8 @@ const createDevice = async (req, res) => {
             created_time: new Date(),
             modified_by: null,
             modified_time: null,
-            status: true
+            status: true,
+            configStatus:false
         };
 
         const result = await db.collection('devices').insertOne(newDevice);

@@ -4,6 +4,7 @@ const { sendProfileUpdatedEmail } = require('../../services/emailService');
 const path = require('path');
 const fs = require('fs');
 const { clearCache } = require('../../middleware/cache');
+const logger = require('../../config/logger');
 
 const getProfile = async (req, res) => {
     try {
@@ -35,7 +36,7 @@ const getProfile = async (req, res) => {
             data: user
         });
     } catch (error) {
-        console.error('Fetching profile failed:', error);
+        logger.error('Fetching profile failed:', error);
         return res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error' 
@@ -114,7 +115,7 @@ const updateProfile = async (req, res) => {
             data: updatedUser
         });
     } catch (error) {
-        console.error('Updating profile failed:', error);
+        logger.error('Updating profile failed:', error);
         return res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error' 
@@ -167,7 +168,7 @@ const uploadProfilePicture = async (req, res) => {
                     try {
                         fs.unlinkSync(oldFilePath);
                     } catch (err) {
-                        console.error('Failed to delete old profile picture:', err);
+                        logger.error('Failed to delete old profile picture:', err);
                     }
                 }
             }
@@ -180,10 +181,11 @@ const uploadProfilePicture = async (req, res) => {
             profilePicPath = path.relative(backendDir, req.file.path).replace(/\\/g, '/');
         }
         
-        console.log('File uploaded:');
-        console.log('- Original path:', req.file.path);
-        console.log('- Stored path:', profilePicPath);
-        console.log('- File exists check:', fs.existsSync(req.file.path));
+        logger.info('File uploaded:', { 
+            originalPath: req.file.path, 
+            storedPath: profilePicPath, 
+            fileExists: fs.existsSync(req.file.path) 
+        });
 
         await db.collection('users').updateOne(
             { user_id },
@@ -209,7 +211,7 @@ const uploadProfilePicture = async (req, res) => {
         if (req.file && req.file.path) {
             fs.unlinkSync(req.file.path);
         }
-        console.error('Uploading profile picture failed:', error);
+        logger.error('Uploading profile picture failed:', error);
         return res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error' 
@@ -266,7 +268,7 @@ const getProfilePicture = async (req, res) => {
             }
             
             if (!found) {
-                console.error(`Profile picture not found for user: ${user_id}`);
+                logger.error(`Profile picture not found for user: ${user_id}`);
                 return res.status(404).json({ 
                     success: false, 
                     message: 'Profile picture file not found'
@@ -276,7 +278,7 @@ const getProfilePicture = async (req, res) => {
 
         res.sendFile(absolutePath);
     } catch (error) {
-        console.error('Fetching profile picture failed:', error);
+        logger.error('Fetching profile picture failed:', error);
         return res.status(500).json({ 
             success: false, 
             message: 'Internal Server Error' 

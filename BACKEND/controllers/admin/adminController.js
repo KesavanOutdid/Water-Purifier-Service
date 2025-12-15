@@ -3,6 +3,7 @@ const { ObjectId } = require('mongodb');
 const { getDB } = require('../../config/database');
 const { sendLoginEmail, sendProfileUpdatedEmail } = require('../../services/emailService');
 const { clearCache } = require('../../middleware/cache');
+const logger = require('../../config/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 
@@ -70,7 +71,7 @@ const login = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error('Admin login failed:', error);
+        logger.error('Admin login failed:', error);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
@@ -102,7 +103,7 @@ const getProfile = async (req, res) => {
             data: admin,
         });
     } catch (error) {
-        console.error('Fetching admin profile failed:', error);
+        logger.error('Fetching admin profile failed:', error);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
@@ -170,7 +171,7 @@ const updateProfile = async (req, res) => {
             data: adminResponse,
         });
     } catch (error) {
-        console.error('Updating profile failed:', error);
+        logger.error('Updating profile failed:', error);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };

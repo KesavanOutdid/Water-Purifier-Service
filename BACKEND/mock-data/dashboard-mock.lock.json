@@ -1,0 +1,67 @@
+{
+  "current_day": {
+    "date": "2025-01-15",
+    "hours": {
+      "0": { "completed": 2, "accepted": 2, "rejected": 0 },
+      "1": { "completed": 1, "accepted": 1, "rejected": 0 },
+      "2": { "completed": 0, "accepted": 0, "rejected": 0 },
+      "3": { "completed": 0, "accepted": 1, "rejected": 0 },
+      "4": { "completed": 1, "accepted": 0, "rejected": 0 },
+      "5": { "completed": 2, "accepted": 3, "rejected": 0 },
+      "6": { "completed": 3, "accepted": 2, "rejected": 1 },
+      "7": { "completed": 4, "accepted": 3, "rejected": 0 },
+      "8": { "completed": 5, "accepted": 6, "rejected": 0 },
+      "9": { "completed": 7, "accepted": 8, "rejected": 1 },
+      "10": { "completed": 10, "accepted": 9, "rejected": 1 },
+      "11": { "completed": 9, "accepted": 7, "rejected": 0 },
+      "12": { "completed": 6, "accepted": 5, "rejected": 1 },
+      "13": { "completed": 8, "accepted": 9, "rejected": 0 },
+      "14": { "completed": 7, "accepted": 6, "rejected": 0 },
+      "15": { "completed": 9, "accepted": 8, "rejected": 1 },
+      "16": { "completed": 8, "accepted": 7, "rejected": 0 },
+      "17": { "completed": 6, "accepted": 5, "rejected": 1 },
+      "18": { "completed": 5, "accepted": 4, "rejected": 0 },
+      "19": { "completed": 3, "accepted": 3, "rejected": 0 },
+      "20": { "completed": 2, "accepted": 2, "rejected": 0 },
+      "21": { "completed": 1, "accepted": 1, "rejected": 0 },
+      "22": { "completed": 1, "accepted": 0, "rejected": 0 },
+      "23": { "completed": 0, "accepted": 1, "rejected": 0 }
+    },
+    "total": { "completed": 100, "accepted": 93, "rejected": 6 }
+  },
+  "current_week": {
+    "week_range": "2025-01-12 to 2025-01-18",
+    "days": {
+      "Sunday": { "completed": 34, "accepted": 32, "rejected": 2 },
+      "Monday": { "completed": 41, "accepted": 38, "rejected": 3 },
+      "Tuesday": { "completed": 38, "accepted": 36, "rejected": 2 },
+      "Wednesday": { "completed": 100, "accepted": 93, "rejected": 6 },
+      "Thursday": { "completed": 42, "accepted": 40, "rejected": 2 },
+      "Friday": { "completed": 45, "accepted": 43, "rejected": 2 },
+      "Saturday": { "completed": 28, "accepted": 26, "rejected": 2 }
+    },
+    "total": { "completed": 328, "accepted": 308, "rejected": 19 }
+  },
+  "current_year": {
+    "year": 2025,
+    "months": {
+      "January": { "completed": 620, "accepted": 590, "rejected": 30 },
+      "February": { "completed": 580, "accepted": 553, "rejected": 27 },
+      "March": { "completed": 650, "accepted": 620, "rejected": 30 },
+      "April": { "completed": 610, "accepted": 585, "rejected": 25 },
+      "May": { "completed": 690, "accepted": 660, "rejected": 30 },
+      "June": { "completed": 670, "accepted": 640, "rejected": 30 },
+      "July": { "completed": 720, "accepted": 685, "rejected": 35 },
+      "August": { "completed": 700, "accepted": 668, "rejected": 32 },
+      "September": { "completed": 680, "accepted": 650, "rejected": 30 },
+      "October": { "completed": 710, "accepted": 678, "rejected": 32 },
+      "November": { "completed": 690, "accepted": 660, "rejected": 30 },
+      "December": { "completed": 790, "accepted": 756, "rejected": 34 }
+    },
+    "total": { "completed": 8110, "accepted": 7745, "rejected": 365 }
+  },
+  "yearly": {
+    "2024": { "completed": 8100, "accepted": 7750, "rejected": 350 },
+    "2025": { "completed": 8110, "accepted": 7745, "rejected": 365 }
+  }
+}

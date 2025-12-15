@@ -707,6 +707,11 @@ router.get('/tasks/:task_id', authMiddleware, getTaskById);
  *                 message:
  *                   type: string
  *                   example: "Task assigned to engineer successfully"
+ *                 notification:
+ *                   type: string
+ *                   enum: [sent, failed, no_fcm_token, not_sent]
+ *                   description: Notification delivery status
+ *                   example: "sent"
  *       400:
  *         description: Validation error or task already assigned
  *       401:
@@ -766,6 +771,11 @@ router.post('/tasks/:task_id/assign', authMiddleware, assignTask);
  *                 message:
  *                   type: string
  *                   example: "Task reassigned to new engineer successfully"
+ *                 notification:
+ *                   type: string
+ *                   enum: [sent, failed, no_fcm_token, not_sent]
+ *                   description: Notification delivery status
+ *                   example: "sent"
  *       400:
  *         description: Validation error or task not assigned yet
  *       401:

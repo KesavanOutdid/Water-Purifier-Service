@@ -1,6 +1,8 @@
 const { getDB } = require('../../config/database');
 const { clearCache } = require('../../middleware/cache');
 const { sendNotification } = require('../../config/firebase');
+const { autoAssignTask } = require('../../services/autoAssignService');
+const logger = require('../../config/logger');
 
 const generateTaskId = async (db) => {
     let taskId;
@@ -153,17 +155,31 @@ const createTask = async (req, res) => {
             assigned_by: null,
             assigned_time: null,
             task_history: [],
+            rejection_reason: null,
+            warnings: {
+                acceptance_warning_1: false,
+                acceptance_warning_2: false,
+                completion_warning_1: false,
+                completion_warning_2: false
+            },
             created_by,
             created_time: new Date(),
             modified_by: null,
             modified_time: null,
             status: true,
-            task_status: 'created'
+            task_status: 'created',
+            configStatus: false
         };
 
         const result = await db.collection('tasks').insertOne(newTask);
 
         await clearCache('tasks:*');
+
+        if (local_distributor_id) {
+            autoAssignTask(task_id).catch(err => 
+                logger.error(`[CREATE-TASK] Auto-assignment failed for task ${task_id}:`, err)
+            );
+        }
 
         res.status(201).json({
             success: true,
@@ -438,8 +454,9 @@ const assignTask = async (req, res) => {
 
         await clearCache('tasks:*');
 
+        let notificationStatus = 'not_sent';
         if (engineer.fcm_token) {
-            await sendNotification(
+            const notificationResult = await sendNotification(
                 engineer.fcm_token,
                 'New Task Assigned',
                 `Task #${task_id} has been assigned to you - ${task.customer_name}`,
@@ -449,12 +466,20 @@ const assignTask = async (req, res) => {
                     customer_name: task.customer_name,
                     service_type: task.service_type
                 }
-            );
+            ).catch(err => {
+                logger.error('Notification send error:', err);
+                return null;
+            });
+            
+            notificationStatus = notificationResult ? 'sent' : 'failed';
+        } else {
+            notificationStatus = 'no_fcm_token';
         }
 
         res.json({
             success: true,
-            message: 'Task assigned to engineer successfully'
+            message: 'Task assigned to engineer successfully',
+            notification: notificationStatus
         });
     } catch (error) {
         res.status(500).json({
@@ -553,8 +578,9 @@ const reassignTask = async (req, res) => {
 
         await clearCache('tasks:*');
 
+        let notificationStatus = 'not_sent';
         if (newEngineer.fcm_token) {
-            await sendNotification(
+            const notificationResult = await sendNotification(
                 newEngineer.fcm_token,
                 'Task Reassigned to You',
                 `Task #${task_id} has been reassigned to you - ${task.customer_name}`,
@@ -565,12 +591,20 @@ const reassignTask = async (req, res) => {
                     service_type: task.service_type,
                     previous_engineer: task.engineer_name
                 }
-            );
+            ).catch(err => {
+                logger.error('Notification send error:', err);
+                return null;
+            });
+            
+            notificationStatus = notificationResult ? 'sent' : 'failed';
+        } else {
+            notificationStatus = 'no_fcm_token';
         }
 
         res.json({
             success: true,
-            message: 'Task reassigned to new engineer successfully'
+            message: 'Task reassigned to new engineer successfully',
+            notification: notificationStatus
         });
     } catch (error) {
         res.status(500).json({

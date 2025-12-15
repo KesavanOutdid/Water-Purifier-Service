@@ -8,6 +8,7 @@ const controlRoutes = require('./controlRoutes');
 const deviceRoutes = require('./deviceRoutes');
 const taskRoutes = require('./taskRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const searchRoutes = require('./searchRoutes');
 
 router.use('/', rolesRoutes);
 router.use('/', adminProfileRoutes);
@@ -17,5 +18,6 @@ router.use('/', controlRoutes);
 router.use('/', deviceRoutes);
 router.use('/', taskRoutes);
 router.use('/', dashboardRoutes);
+router.use('/', searchRoutes);
 
 module.exports = router;

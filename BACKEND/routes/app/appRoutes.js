@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const appTaskRoutes = require('./appTaskRoutes');
+const appSearchRoutes = require('./appSearchRoutes');
 const { uploadProfilePic } = require('../../middleware/uploadMiddleware');
 const {
     getProfile,
@@ -273,5 +274,6 @@ router.post('/profile/picture', authMiddleware, uploadProfilePic.single('profile
 router.get('/profile/picture', authMiddleware, getProfilePicture);
 
 router.use('/', appTaskRoutes);
+router.use('/', appSearchRoutes);
 
 module.exports = router;

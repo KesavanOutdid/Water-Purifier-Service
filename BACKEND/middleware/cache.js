@@ -1,4 +1,5 @@
 const { getRedisClient } = require('../config/redis');
+const logger = require('../config/logger');
 
 const cacheMiddleware = (keyPrefix, ttl = 120) => {
     return async (req, res, next) => {
@@ -23,7 +24,7 @@ const cacheMiddleware = (keyPrefix, ttl = 120) => {
             res.json = (data) => {
                 if (data.success) {
                     redisClient.setEx(cacheKey, ttl, JSON.stringify(data)).catch(err => {
-                        console.error('Redis cache set error:', err);
+                        logger.error('Redis cache set error:', err);
                     });
                 }
                 return originalJson(data);
@@ -31,7 +32,7 @@ const cacheMiddleware = (keyPrefix, ttl = 120) => {
 
             next();
         } catch (error) {
-            console.error('Cache middleware error:', error);
+            logger.error('Cache middleware error:', error);
             next();
         }
     };
@@ -50,7 +51,7 @@ const clearCache = async (keyPattern) => {
             await redisClient.del(keys);
         }
     } catch (error) {
-        console.error('Clear cache error:', error);
+        logger.error('Clear cache error:', error);
     }
 };
 

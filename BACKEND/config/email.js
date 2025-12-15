@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const logger = require('./logger');
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -13,10 +14,10 @@ const transporter = nodemailer.createTransport({
 const verifyEmailConnection = async () => {
     try {
         await transporter.verify();
-        console.log('Email service is ready to send emails');
+        logger.info('Email service is ready to send emails');
         return true;
     } catch (error) {
-        console.error('Email service connection error:', error);
+        logger.error('Email service connection error:', error);
         return false;
     }
 };
