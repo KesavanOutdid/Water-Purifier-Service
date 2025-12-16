@@ -1097,6 +1097,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           task: currentTask,
           engineerId: widget.engineerId,
           onConfigSuccess: () {
+            setState(() {
+              currentTask.configStatus = true;
+            });
             widget.onTaskUpdated();
           },
         ),

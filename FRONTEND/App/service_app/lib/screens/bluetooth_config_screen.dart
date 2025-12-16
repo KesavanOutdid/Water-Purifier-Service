@@ -537,15 +537,20 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
           });
           
           _logger.i('✅ Device reset completed successfully');
+          
           AlertUtils.showSuccessAlert(
             context,
             title: 'Reset Successful',
             message: resetResponse['message'] ?? 'Device reset completed successfully',
-            onClose: () {
+          );
+          
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              Navigator.of(context).pop();
               widget.onConfigSuccess();
               Navigator.of(context).pop();
-            },
-          );
+            }
+          });
         } else {
           throw Exception(resetResponse['message'] ?? 'Reset command failed');
         }
