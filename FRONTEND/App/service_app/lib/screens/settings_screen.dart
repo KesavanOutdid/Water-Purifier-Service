@@ -9,7 +9,9 @@ import '../utils/alert_utils.dart';
 import 'privacy_policy_screen.dart';
 import 'help_support_screen.dart';
 import 'edit_profile_screen.dart';
+import 'service_history_screen.dart';
 import '../services/api_service.dart';
+import '../services/token_storage.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -22,7 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   bool notificationsEnabled = true;
-  bool emailReminders = true;
   late ApiService _apiService;
   late ImagePicker _imagePicker;
   
@@ -325,20 +326,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             activeThumbColor: AppTheme.primaryColor,
           ),
         ),
-        _buildSettingsTile(
-          icon: Icons.email,
-          title: 'Email Reminders',
-          subtitle: 'Scheduled service reminders',
-          trailing: Switch(
-            value: emailReminders,
-            onChanged: (value) {
-              setState(() {
-                emailReminders = value;
-              });
-            },
-            activeThumbColor: AppTheme.primaryColor,
-          ),
-        ),
       ],
     );
   }
@@ -360,6 +347,20 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         const SizedBox(height: 16),
+        _buildSectionHeader('History'),
+        _buildSettingsTile(
+          icon: Icons.history,
+          title: 'Service History',
+          subtitle: 'View your service requests',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ServiceHistoryScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
         _buildSectionHeader('About'),
         _buildSettingsTile(
           icon: Icons.privacy_tip,
@@ -374,9 +375,11 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         _buildSettingsTile(
           icon: Icons.info_outline,
-          title: 'About AQUA',
+          title: 'About',
           subtitle: 'Version 1.0.0',
-          onTap: () {},
+          onTap: () {
+            _showAboutDialog();
+          },
         ),
       ],
     );
@@ -634,9 +637,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   void _showLogoutDialog() {
+    final navigator = Navigator.of(context);
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Logout',
@@ -648,7 +653,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Cancel',
               style: GoogleFonts.poppins(color: AppTheme.textSecondaryColor),
@@ -657,15 +662,18 @@ class _SettingsScreenState extends State<SettingsScreen>
           TextButton(
             onPressed: () async {
               try {
+                Navigator.pop(dialogContext);
+                
                 await _apiService.logout();
+                await TokenStorage.clearAll();
+                
                 if (mounted) {
-                  Navigator.pop(context);
                   AlertUtils.showSuccessAlert(
                     context,
                     title: 'Logged Out',
                     message: 'You have been logged out successfully',
                     onClose: () {
-                      Navigator.of(context).pushReplacementNamed('/onboarding');
+                      navigator.pushReplacementNamed('/onboarding');
                     },
                   );
                 }
@@ -682,6 +690,65 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: Text(
               'Logout',
               style: GoogleFonts.poppins(color: AppTheme.errorColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'About',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Water Purifier Service App',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Version 1.0.0',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Designed for service engineers who ensure clean and safe drinking water for every home. This app helps you manage tasks, track services, and deliver reliable maintenance on time.',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '© 2025  Services. All rights reserved.',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: GoogleFonts.poppins(color: AppTheme.primaryColor),
             ),
           ),
         ],

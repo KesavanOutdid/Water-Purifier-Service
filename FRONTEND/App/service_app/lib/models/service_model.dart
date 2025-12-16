@@ -107,6 +107,9 @@ class TaskModel {
   final String engineerName;
   final String assignedBy;
   final DateTime assignedTime;
+  final DateTime? acceptedTime;
+  final DateTime? completedTime;
+  final DateTime? rejectedTime;
   final List<TaskHistory> taskHistory;
   final String createdBy;
   final DateTime createdTime;
@@ -114,6 +117,7 @@ class TaskModel {
   final DateTime modifiedTime;
   final bool status;
   final String taskStatus;
+  final bool? configStatus;
 
   TaskModel({
     required this.id,
@@ -133,6 +137,9 @@ class TaskModel {
     required this.engineerName,
     required this.assignedBy,
     required this.assignedTime,
+    this.acceptedTime,
+    this.completedTime,
+    this.rejectedTime,
     required this.taskHistory,
     required this.createdBy,
     required this.createdTime,
@@ -140,6 +147,7 @@ class TaskModel {
     required this.modifiedTime,
     required this.status,
     required this.taskStatus,
+    this.configStatus,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -168,6 +176,15 @@ class TaskModel {
       assignedTime: json['assigned_time'] != null
           ? DateTime.parse(json['assigned_time'])
           : (json['rejected_at'] != null ? DateTime.parse(json['rejected_at']) : DateTime.now()),
+      acceptedTime: json['accepted_at'] != null 
+          ? DateTime.parse(json['accepted_at'])
+          : null,
+      completedTime: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'])
+          : null,
+      rejectedTime: json['rejected_at'] != null
+          ? DateTime.parse(json['rejected_at'])
+          : null,
       taskHistory: json['task_history'] != null
           ? List<TaskHistory>.from(
               (json['task_history'] as List).map((h) => TaskHistory.fromJson(h)))
@@ -182,6 +199,7 @@ class TaskModel {
           : DateTime.now(),
       status: json['status'] ?? true,
       taskStatus: status,
+      configStatus: json['config_status'],
     );
   }
 
@@ -221,5 +239,142 @@ class TaskModel {
       default:
         return taskStatus;
     }
+  }
+}
+
+class TaskStats {
+  final int completed;
+  final int accepted;
+  final int rejected;
+
+  TaskStats({
+    required this.completed,
+    required this.accepted,
+    required this.rejected,
+  });
+
+  factory TaskStats.fromJson(Map<String, dynamic> json) {
+    return TaskStats(
+      completed: json['completed'] ?? 0,
+      accepted: json['accepted'] ?? 0,
+      rejected: json['rejected'] ?? 0,
+    );
+  }
+
+  int get total => completed + accepted + rejected;
+}
+
+class DayPeriodAnalytics {
+  final String date;
+  final Map<int, TaskStats> hours;
+  final TaskStats total;
+
+  DayPeriodAnalytics({
+    required this.date,
+    required this.hours,
+    required this.total,
+  });
+
+  factory DayPeriodAnalytics.fromJson(Map<String, dynamic> json) {
+    final hoursMap = <int, TaskStats>{};
+    final hoursJson = json['hours'] as Map<String, dynamic>? ?? {};
+    hoursJson.forEach((key, value) {
+      hoursMap[int.parse(key)] = TaskStats.fromJson(value);
+    });
+
+    return DayPeriodAnalytics(
+      date: json['date'] ?? '',
+      hours: hoursMap,
+      total: TaskStats.fromJson(json['total'] ?? {}),
+    );
+  }
+}
+
+class WeekPeriodAnalytics {
+  final String weekRange;
+  final Map<String, TaskStats> days;
+  final TaskStats total;
+
+  WeekPeriodAnalytics({
+    required this.weekRange,
+    required this.days,
+    required this.total,
+  });
+
+  factory WeekPeriodAnalytics.fromJson(Map<String, dynamic> json) {
+    final daysMap = <String, TaskStats>{};
+    final daysJson = json['days'] as Map<String, dynamic>? ?? {};
+    daysJson.forEach((key, value) {
+      daysMap[key] = TaskStats.fromJson(value);
+    });
+
+    return WeekPeriodAnalytics(
+      weekRange: json['week_range'] ?? '',
+      days: daysMap,
+      total: TaskStats.fromJson(json['total'] ?? {}),
+    );
+  }
+}
+
+class MonthPeriodAnalytics {
+  final int year;
+  final Map<String, TaskStats> months;
+  final TaskStats total;
+
+  MonthPeriodAnalytics({
+    required this.year,
+    required this.months,
+    required this.total,
+  });
+
+  factory MonthPeriodAnalytics.fromJson(Map<String, dynamic> json) {
+    final monthsMap = <String, TaskStats>{};
+    final monthsJson = json['months'] as Map<String, dynamic>? ?? {};
+    monthsJson.forEach((key, value) {
+      monthsMap[key] = TaskStats.fromJson(value);
+    });
+
+    return MonthPeriodAnalytics(
+      year: json['year'] ?? 0,
+      months: monthsMap,
+      total: TaskStats.fromJson(json['total'] ?? {}),
+    );
+  }
+}
+
+class YearlyAnalytics {
+  final Map<String, TaskStats> years;
+
+  YearlyAnalytics({required this.years});
+
+  factory YearlyAnalytics.fromJson(Map<String, dynamic> json) {
+    final yearsMap = <String, TaskStats>{};
+    json.forEach((key, value) {
+      yearsMap[key] = TaskStats.fromJson(value);
+    });
+    return YearlyAnalytics(years: yearsMap);
+  }
+}
+
+class DashboardAnalytics {
+  final DayPeriodAnalytics currentDay;
+  final WeekPeriodAnalytics currentWeek;
+  final MonthPeriodAnalytics currentYear;
+  final YearlyAnalytics yearly;
+
+  DashboardAnalytics({
+    required this.currentDay,
+    required this.currentWeek,
+    required this.currentYear,
+    required this.yearly,
+  });
+
+  factory DashboardAnalytics.fromJson(Map<String, dynamic> json) {
+    return DashboardAnalytics(
+      currentDay: DayPeriodAnalytics.fromJson(json['current_day'] ?? {}),
+      currentWeek: WeekPeriodAnalytics.fromJson(json['current_week'] ?? {}),
+      currentYear: MonthPeriodAnalytics.fromJson(json['current_year'] ?? {}),
+      yearly: YearlyAnalytics.fromJson(json['yearly'] ?? {}),
+    );
   }
 }

@@ -302,8 +302,6 @@ class ApiService {
 
   Future<Map<String, dynamic>> getEngineerTasks({
     required String engineerId,
-    int page = 1,
-    int limit = 10,
   }) async {
     try {
       final token = await TokenStorage.getToken();
@@ -311,7 +309,7 @@ class ApiService {
         throw Exception('No authentication token found');
       }
 
-      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/engineer/$engineerId/tasks?page=$page&limit=$limit';
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/engineer/$engineerId/tasks';
       
       _logRequest('GET', endpoint);
 
@@ -512,8 +510,6 @@ class ApiService {
 
   Future<Map<String, dynamic>> getEngineerHistory({
     required String engineerId,
-    int page = 1,
-    int limit = 10,
   }) async {
     try {
       final token = await TokenStorage.getToken();
@@ -521,7 +517,7 @@ class ApiService {
         throw Exception('No authentication token found');
       }
 
-      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/engineer/$engineerId/history?page=$page&limit=$limit';
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/engineer/$engineerId/history';
       
       _logRequest('GET', endpoint);
 
@@ -577,6 +573,185 @@ class ApiService {
       } else {
         _logResponse('FAILED (${response.statusCode})', result);
         throw Exception(result['message'] ?? 'Failed to fetch task history');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<DashboardAnalytics> getDashboardAnalytics() async {
+    try {
+      final token = await TokenStorage.getToken();
+      final user = await TokenStorage.getUser();
+      
+      if (token == null || user == null) {
+        throw Exception('No authentication token or user found');
+      }
+
+      final userId = user['user_id'];
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/engineer/$userId/dashboard';
+      
+      _logRequest('GET', endpoint);
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        return DashboardAnalytics.fromJson(result['data']);
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Failed to fetch dashboard analytics');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<Map<String, dynamic>> configureDevice({
+    required String deviceId,
+    required String engineerId,
+    required String macId,
+    required int taskId,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/devices/$deviceId/configure';
+      
+      final body = {
+        'engineer_id': engineerId,
+        'mac_id': macId,
+        'task_id': taskId,
+      };
+
+      _logRequest('POST', endpoint, body: body);
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Failed to configure device');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<Map<String, dynamic>> sendDeviceHandshake({
+    required String deviceId,
+    required int taskId,
+    required String engineerId,
+    required Map<String, dynamic> handshakeData,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/devices/$deviceId/handshake';
+      
+      final body = {
+        ...handshakeData,
+        'engineer_id': engineerId,
+        'task_id': taskId,
+      };
+
+      _logRequest('POST', endpoint, body: body);
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Device handshake failed');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<Map<String, dynamic>> sendDeviceReset({
+    required String deviceId,
+    required int taskId,
+    required String engineerId,
+    required Map<String, dynamic> resetData,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/devices/$deviceId/reset';
+      
+      final body = {
+        ...resetData,
+        'engineer_id': engineerId,
+        'task_id': taskId,
+      };
+
+      _logRequest('POST', endpoint, body: body);
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Device reset failed');
       }
     } catch (e) {
       _logError(e.toString());

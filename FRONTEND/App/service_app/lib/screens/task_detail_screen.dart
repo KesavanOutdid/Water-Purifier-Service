@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
@@ -8,6 +9,8 @@ import '../services/api_service.dart';
 import '../themes/app_theme.dart';
 import '../utils/alert_utils.dart';
 import '../widgets/custom_button.dart';
+import 'qr_scanner_screen.dart';
+import 'bluetooth_config_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskModel task;
@@ -37,6 +40,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   String rejectReason = '';
   bool isLoading = false;
   String? error;
+  
+  bool _isCustomerExpanded = true;
+  bool _isDeviceExpanded = false;
+  bool _isAssignmentExpanded = false;
 
   final List<String> rejectReasons = [
     'Not available at that location',
@@ -365,6 +372,37 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     );
   }
 
+  Future<void> _scanQRCode(Function(String) onScanned) async {
+    try {
+      final result = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const QRScannerScreen()),
+      );
+
+      if (result != null && result.isNotEmpty) {
+        onScanned(result);
+        if (mounted) {
+          setState(() {
+            deviceId = result;
+          });
+          AlertUtils.showSuccessAlert(
+            context,
+            title: 'Success',
+            message: 'Device ID scanned: $result',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertUtils.showErrorAlert(
+          context,
+          title: 'Error',
+          message: 'Error scanning QR code: $e',
+        );
+      }
+    }
+  }
+
   void _showManualReasonDialog() {
     final controller = TextEditingController();
     showDialog(
@@ -466,6 +504,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   void _showCompleteTaskDialog() {
+    final deviceIdController = TextEditingController(text: deviceId);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -592,10 +632,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 const SizedBox(height: 8),
                 TextField(
                   onChanged: (value) {
-                    setModalState(() {
-                      deviceId = value;
-                    });
+                    deviceId = value;
                   },
+                  controller: deviceIdController,
                   decoration: InputDecoration(
                     hintText: 'Enter or scan device ID',
                     border: OutlineInputBorder(
@@ -603,11 +642,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     ),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.qr_code),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('QR code scanner to be implemented')),
-                        );
+                      onPressed: () async {
+                        await _scanQRCode((scannedValue) {
+                          deviceIdController.text = scannedValue;
+                          deviceId = scannedValue;
+                        });
                       },
                     ),
                   ),
@@ -643,15 +682,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         opacity: Tween<double>(begin: 0.0, end: 1.0)
             .animate(_animationController),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTaskHeader(),
               const SizedBox(height: 24),
-              _buildDetailSection(
-                icon: Icons.person,
+              _buildCollapsibleSection(
                 title: 'Customer Information',
+                icon: Icons.person_outline,
+                borderColor: Colors.blue,
+                isExpanded: _isCustomerExpanded,
+                onExpandChanged: (value) {
+                  setState(() {
+                    _isCustomerExpanded = value;
+                    if (value) {
+                      _isDeviceExpanded = false;
+                      _isAssignmentExpanded = false;
+                    }
+                  });
+                },
                 details: [
                   ('Name', currentTask.customerName),
                   ('Phone', currentTask.phone),
@@ -661,10 +711,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                       : currentTask.address.fullAddress),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildDetailSection(
-                icon: Icons.devices,
+              _buildCollapsibleSection(
                 title: 'Device Information',
+                icon: Icons.devices,
+                borderColor: Colors.orange,
+                isExpanded: _isDeviceExpanded,
+                onExpandChanged: (value) {
+                  setState(() {
+                    _isDeviceExpanded = value;
+                    if (value) {
+                      _isCustomerExpanded = false;
+                      _isAssignmentExpanded = false;
+                    }
+                  });
+                },
                 details: [
                   ('Model', currentTask.modelName),
                   ('Model ID', currentTask.modelId),
@@ -673,10 +733,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Distributor', currentTask.distributorName),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildDetailSection(
-                icon: Icons.assignment,
+              _buildCollapsibleSection(
                 title: 'Assignment Details',
+                icon: Icons.assignment,
+                borderColor: Colors.green,
+                isExpanded: _isAssignmentExpanded,
+                onExpandChanged: (value) {
+                  setState(() {
+                    _isAssignmentExpanded = value;
+                    if (value) {
+                      _isCustomerExpanded = false;
+                      _isDeviceExpanded = false;
+                    }
+                  });
+                },
                 details: [
                   ('Task ID', '#${currentTask.taskId}'),
                   ('Engineer', currentTask.engineerName),
@@ -684,11 +754,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Assigned', '${_formatDate(currentTask.assignedTime)} • ${_formatTime(currentTask.assignedTime)}'),
                 ],
               ),
-              const SizedBox(height: 24),
-              if (currentTask.taskHistory.isNotEmpty)
-                _buildTaskHistorySection(),
-              const SizedBox(height: 24),
-              if (error != null)
+              const SizedBox(height: 20),
+              if (error != null) ...[
+                const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -705,9 +773,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
+              ],
+              const SizedBox(height: 12),
               _buildActionButtons(),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -810,232 +878,166 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     );
   }
 
-  Widget _buildDetailSection({
-    required IconData icon,
+  Widget _buildCollapsibleSection({
     required String title,
     required List<(String, String)> details,
+    required bool isExpanded,
+    required Function(bool) onExpandChanged,
+    required Color borderColor,
+    required IconData icon,
   }) {
-    Color iconColor = AppTheme.primaryColor;
-    if (title.contains('Customer')) {
-      iconColor = Colors.blue;
-    } else if (title.contains('Device')) {
-      iconColor = Colors.orange;
-    } else if (title.contains('Assignment')) {
-      iconColor = Colors.green;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimaryColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.dividerColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.dividerColor, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            children: details
-                .asMap()
-                .entries
-                .map((entry) {
-                  int index = entry.key;
-                  var (label, value) = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.all(14),
+        ],
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: () {
+              onExpandChanged(!isExpanded);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: borderColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: borderColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          label,
+                          title,
                           style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textSecondaryColor,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          value,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimaryColor,
                           ),
                         ),
-                        if (index < details.length - 1)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: Divider(
-                              height: 1,
-                              color: AppTheme.dividerColor,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                })
-                .toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTaskHistorySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.purple.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.history, color: Colors.purple, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Task History',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimaryColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.dividerColor),
-          ),
-          child: Column(
-            children: currentTask.taskHistory.asMap().entries.map((entry) {
-              int index = entry.key;
-              TaskHistory history = entry.value;
-              bool isLast = index == currentTask.taskHistory.length - 1;
-
-              return Stack(
-                children: [
-                  if (!isLast)
-                    Positioned(
-                      left: 20,
-                      top: 50,
-                      bottom: 0,
-                      child: Container(
-                        width: 2,
-                        color: AppTheme.dividerColor,
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _getActionColor(history.action).withValues(alpha: 0.15),
-                            border: Border.all(
-                              color: _getActionColor(history.action).withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Icon(
-                            _getHistoryIcon(history.action),
-                            color: _getActionColor(history.action),
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                history.action.replaceAll('_', ' ').toUpperCase(),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              if (history.toName != null)
-                                Text(
-                                  'To: ${history.toName}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                ),
-                              if (history.reason != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Reason: ${history.reason}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${_formatDate(history.timestamp)} • ${_formatTime(history.timestamp)}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade500,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 2),
+                        Text(
+                          isExpanded ? 'Tap to collapse' : 'Tap to expand',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: AppTheme.textSecondaryColor,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: borderColor,
+                    size: 26,
+                  ),
                 ],
-              );
-            }).toList(),
+              ),
+            ),
           ),
-        ),
-      ],
+          if (isExpanded)
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppTheme.dividerColor,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                children: details
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                      int index = entry.key;
+                      var (label, value) = entry.value;
+                      bool isLast = index == details.length - 1;
+                      return Container(
+                        decoration: BoxDecoration(
+                          border: isLast
+                              ? null
+                              : Border(
+                                  bottom: BorderSide(
+                                    color: AppTheme.dividerColor.withValues(alpha: 0.5),
+                                    width: 0.5,
+                                  ),
+                                ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                label,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textSecondaryColor,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  value,
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimaryColor,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    })
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  String _formatStatusName(String action) {
+    final statusMap = {
+      'created': 'Task Created',
+      'assigned': 'Assigned',
+      'accepted': 'Accepted',
+      'rejected': 'Rejected',
+      'completed': 'Completed',
+      'in_progress': 'In Progress',
+    };
+    return statusMap[action.toLowerCase()] ?? action.replaceAll('_', ' ');
   }
 
   Widget _buildActionButtons() {
@@ -1071,12 +1073,35 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         ],
       );
     } else if (currentTask.taskStatus == 'accepted') {
-      return CustomButton(
-        text: 'Complete Task',
-        onPressed: isLoading ? () {} : _showCompleteTaskDialog,
-      );
+      bool needsConfig = currentTask.configStatus == null || currentTask.configStatus == false;
+
+      if (needsConfig) {
+        return CustomButton(
+          text: 'Configure Device',
+          onPressed: isLoading ? () {} : () => _showBluetoothConfigScreen(),
+        );
+      } else {
+        return CustomButton(
+          text: 'Complete Task',
+          onPressed: isLoading ? () {} : _showCompleteTaskDialog,
+        );
+      }
     }
     return const SizedBox.shrink();
+  }
+
+  void _showBluetoothConfigScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BluetoothConfigScreen(
+          task: currentTask,
+          engineerId: widget.engineerId,
+          onConfigSuccess: () {
+            widget.onTaskUpdated();
+          },
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime utcDateTime) {

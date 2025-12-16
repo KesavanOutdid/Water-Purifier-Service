@@ -60,8 +60,6 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
     try {
       final response = await _apiService.getEngineerHistory(
         engineerId: engineerId,
-        page: currentPage,
-        limit: pageSize,
       );
 
       if (response['success'] == true && response['data'] != null) {
@@ -133,14 +131,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
 
   Color _getStatusColor(String taskStatus) {
     switch (taskStatus) {
-      case 'created':
-        return Colors.grey;
-      case 'assigned':
-        return Colors.blue;
-      case 'accepted':
-        return Colors.orange;
-      case 'inProgress':
-        return Colors.amber;
+      // case 'created':
+      //   return Colors.grey;
+      // case 'assigned':
+      //   return Colors.blue;
+      // case 'accepted':
+      //   return Colors.orange;
+      // case 'inProgress':
+      //   return Colors.amber;
       case 'completed':
         return Colors.green;
       case 'rejected':
@@ -152,14 +150,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
 
   String _getStatusText(String status) {
     switch (status) {
-      case 'created':
-        return 'Created';
-      case 'assigned':
-        return 'Assigned';
-      case 'accepted':
-        return 'Accepted';
-      case 'inProgress':
-        return 'In Progress';
+      // case 'created':
+      //   return 'Created';
+      // case 'assigned':
+      //   return 'Assigned';
+      // case 'accepted':
+      //   return 'Accepted';
+      // case 'inProgress':
+      //   return 'In Progress';
       case 'completed':
         return 'Completed';
       case 'rejected':
@@ -248,9 +246,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                           child: Row(
                             children: [
                               _buildFilterChip(null, 'All'),
-                              _buildFilterChip('created', 'Created'),
-                              _buildFilterChip('assigned', 'Assigned'),
-                              _buildFilterChip('accepted', 'Accepted'),
+                              // _buildFilterChip('created', 'Created'),
+                              // _buildFilterChip('assigned', 'Assigned'),
+                              // _buildFilterChip('accepted', 'Accepted'),
                               _buildFilterChip('completed', 'Completed'),
                               _buildFilterChip('rejected', 'Rejected'),
                             ],
@@ -374,6 +372,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
     return DateFormat('dd/MM/yyyy hh:mm a').format(ist);
   }
 
+  String _getStatusDateText(TaskModel task) {
+    switch (task.taskStatus) {
+      case 'accepted':
+        return 'Accepted: ${task.acceptedTime != null ? _formatDateTime(task.acceptedTime!) : _formatDateTime(task.assignedTime)}';
+      case 'completed':
+        return 'Completed: ${task.completedTime != null ? _formatDateTime(task.completedTime!) : _formatDateTime(task.assignedTime)}';
+      case 'rejected':
+        return 'Rejected: ${task.rejectedTime != null ? _formatDateTime(task.rejectedTime!) : _formatDateTime(task.assignedTime)}';
+      default:
+        return 'Modified: ${_formatDateTime(task.modifiedTime)}';
+    }
+  }
+
   Widget _buildHistoryCard(TaskModel task) {
     return Container(
       decoration: BoxDecoration(
@@ -485,7 +496,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
           ),
           const SizedBox(height: 12),
           Text(
-            'Modified: ${_formatDateTime(task.modifiedTime)}',
+            _getStatusDateText(task),
             style: GoogleFonts.poppins(
               fontSize: 12,
               color: AppTheme.textSecondaryColor,
@@ -535,60 +546,60 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
               _detailRow('Status', _getStatusText(task.taskStatus)),
               _detailRow('Address', task.address.fullAddress),
               const SizedBox(height: 20),
-              if (task.taskHistory.isNotEmpty) ...[
-                Text(
-                  'Task History',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...task.taskHistory.map((history) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.dividerColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            history.action.toUpperCase(),
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          if (history.toName != null)
-                            Text(
-                              'To: ${history.toName}',
-                              style: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                          if (history.reason != null)
-                            Text(
-                              'Reason: ${history.reason}',
-                              style: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatDateTime(history.timestamp),
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ],
+              // if (task.taskHistory.isNotEmpty) ...[
+              //   Text(
+              //     'Task History',
+              //     style: GoogleFonts.poppins(
+              //       fontSize: 14,
+              //       fontWeight: FontWeight.w600,
+              //     ),
+              //   ),
+              //   const SizedBox(height: 12),
+              //   ...task.taskHistory.map((history) {
+              //     return Padding(
+              //       padding: const EdgeInsets.only(bottom: 12),
+              //       child: Container(
+              //         padding: const EdgeInsets.all(12),
+              //         decoration: BoxDecoration(
+              //           color: Colors.grey.shade50,
+              //           borderRadius: BorderRadius.circular(8),
+              //           border: Border.all(color: AppTheme.dividerColor),
+              //         ),
+              //         child: Column(
+              //           crossAxisAlignment: CrossAxisAlignment.start,
+              //           children: [
+              //             Text(
+              //               history.action.toUpperCase(),
+              //               style: GoogleFonts.poppins(
+              //                 fontSize: 12,
+              //                 fontWeight: FontWeight.w600,
+              //                 color: AppTheme.primaryColor,
+              //               ),
+              //             ),
+              //             if (history.toName != null)
+              //               Text(
+              //                 'To: ${history.toName}',
+              //                 style: GoogleFonts.poppins(fontSize: 12),
+              //               ),
+              //             if (history.reason != null)
+              //               Text(
+              //                 'Reason: ${history.reason}',
+              //                 style: GoogleFonts.poppins(fontSize: 12),
+              //               ),
+              //             const SizedBox(height: 4),
+              //             Text(
+              //               _formatDateTime(history.timestamp),
+              //               style: GoogleFonts.poppins(
+              //                 fontSize: 11,
+              //                 color: AppTheme.textSecondaryColor,
+              //               ),
+              //             ),
+              //           ],
+              //         ),
+              //       ),
+              //     );
+              //   }).toList(),
+              // ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,

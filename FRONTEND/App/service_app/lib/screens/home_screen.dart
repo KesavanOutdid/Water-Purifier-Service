@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../themes/app_theme.dart';
 import '../services/token_storage.dart';
+import '../models/service_model.dart';
+import '../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -13,10 +16,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  final ApiService _apiService = ApiService();
   String _userName = 'User';
-  String _userEmail = '';
-  int _pendingTasks = 0;
-  int _completedToday = 0;
+
+  DashboardAnalytics? _dashboardData;
+  String _selectedPeriod = 'today';
+  bool _isLoadingDashboard = false;
 
   @override
   void initState() {
@@ -27,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     _animationController.forward();
     _loadUserData();
+    _loadDashboardData();
   }
 
   Future<void> _loadUserData() async {
@@ -34,8 +40,21 @@ class _HomeScreenState extends State<HomeScreen>
     if (user != null) {
       setState(() {
         _userName = user['name'] ?? 'User';
-        _userEmail = user['email'] ?? '';
       });
+    }
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoadingDashboard = true);
+    try {
+      final data = await _apiService.getDashboardAnalytics();
+      setState(() {
+        _dashboardData = data;
+        _isLoadingDashboard = false;
+      });
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      setState(() => _isLoadingDashboard = false);
     }
   }
 
@@ -51,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen>
       appBar: AppBar(
         title: const Text('Home'),
         elevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           Padding(
             padding: const EdgeInsets.all(12),
@@ -118,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Your water purifier is working perfectly',
+                        'Ready to serve and support customers',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -133,9 +153,9 @@ class _HomeScreenState extends State<HomeScreen>
                             label: 'Status',
                             value: 'Active',
                           ),
-                              const SizedBox(
+                          const SizedBox(
                             width: 12,
-                          ), 
+                          ),
                           _buildStatusCard(
                             icon: Icons.calendar_today,
                             label: 'Next Service',
@@ -169,8 +189,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.build_outlined,
                           label: 'Service',
                           onTap: () {
-                            Navigator.of(context)
-                                .pushNamed('/service');
+                            Navigator.of(context).pushNamed('/service');
                           },
                         ),
                       ),
@@ -180,8 +199,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.history,
                           label: 'History',
                           onTap: () {
-                            Navigator.of(context)
-                                .pushNamed('/service-history');
+                            Navigator.of(context).pushNamed('/service-history');
                           },
                         ),
                       ),
@@ -196,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Tasks Overview',
+                    'Tasks Analysis',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -204,27 +222,23 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.assignment_outlined,
-                          label: 'Pending',
-                          value: _pendingTasks.toString(),
-                          color: Colors.orange,
+                  _buildPeriodTabs(),
+                  const SizedBox(height: 20),
+                  if (_isLoadingDashboard)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_dashboardData != null)
+                    _buildAnalyticsCards(_dashboardData)
+                  else
+                    Center(
+                      child: Text(
+                        'No data available',
+                        style: GoogleFonts.poppins(
+                          color: AppTheme.textSecondaryColor,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.check_circle_outline,
-                          label: 'Completed Today',
-                          value: _completedToday.toString(),
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  const SizedBox(height: 24),
+                  _buildUpcomingSection(),
                 ],
               ),
             ),
@@ -325,25 +339,26 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppTheme.primaryColor.withOpacity(0.3),
           ),
         ),
-        child: Column(
+        child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.primaryColor,
               ),
-              child: Icon(icon, color: Colors.white),
+              child: Icon(icon, color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimaryColor,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
             ),
           ],
@@ -352,40 +367,670 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
+  Widget _buildPeriodTabs() {
+    final periods = ['today', 'week', 'month', 'year'];
+    final labels = ['Today', 'Weekly', 'Monthly', 'Yearly'];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(
+          periods.length,
+          (index) => Padding(
+            padding:
+                EdgeInsets.only(right: index < periods.length - 1 ? 12 : 0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedPeriod = periods[index];
+                });
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: _selectedPeriod == periods[index]
+                      ? LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor,
+                            AppTheme.primaryDarkColor,
+                          ],
+                        )
+                      : null,
+                  color: _selectedPeriod == periods[index]
+                      ? null
+                      : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(25),
+                  border: _selectedPeriod == periods[index]
+                      ? null
+                      : Border.all(
+                          color: Colors.grey.withOpacity(0.3),
+                        ),
+                ),
+                child: Text(
+                  labels[index],
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _selectedPeriod == periods[index]
+                        ? Colors.white
+                        : AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsCards(DashboardAnalytics? data) {
+    if (data == null) {
+      return const SizedBox.shrink();
+    }
+
+    switch (_selectedPeriod) {
+      case 'today':
+        return _buildHourlyChart(data.currentDay);
+      case 'week':
+        return _buildWeeklyChart(data.currentWeek);
+      case 'month':
+        return _buildMonthlyChart(data.currentYear);
+      case 'year':
+        return _buildYearlyChart(data.yearly);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildHourlyChart(DayPeriodAnalytics dayData) {
+    final hoursWithData = <int>[];
+    final completedSpots = <FlSpot>[];
+    final acceptedSpots = <FlSpot>[];
+    final rejectedSpots = <FlSpot>[];
+
+    for (int i = 0; i < 24; i++) {
+      final stats = dayData.hours[i];
+      if (stats != null && stats.total > 0) {
+        hoursWithData.add(i);
+        completedSpots.add(
+            FlSpot(hoursWithData.length - 1.0, stats.completed.toDouble()));
+        acceptedSpots
+            .add(FlSpot(hoursWithData.length - 1.0, stats.accepted.toDouble()));
+        rejectedSpots
+            .add(FlSpot(hoursWithData.length - 1.0, stats.rejected.toDouble()));
+      }
+    }
+
+    if (hoursWithData.isEmpty) {
+      return _buildEmptyChart('No hourly data available');
+    }
+
+    final maxValue = [
+      ...completedSpots.map((e) => e.y),
+      ...acceptedSpots.map((e) => e.y),
+      ...rejectedSpots.map((e) => e.y),
+    ].reduce((a, b) => a > b ? a : b);
+
+    return _buildChartCard(
+      title: 'Hourly Analysis',
+      subtitle: dayData.date,
+      stats: dayData.total,
+      chart: _buildLineChart(
+        completedSpots: completedSpots,
+        acceptedSpots: acceptedSpots,
+        rejectedSpots: rejectedSpots,
+        maxValue: maxValue,
+        maxX: (hoursWithData.length - 1).toDouble(),
+        xLabels: hoursWithData.map((h) => '${h}h').toList(),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyChart(WeekPeriodAnalytics weekData) {
+    final dayNames = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ];
+    final completedSpots = <FlSpot>[];
+    final acceptedSpots = <FlSpot>[];
+    final rejectedSpots = <FlSpot>[];
+
+    for (int i = 0; i < dayNames.length; i++) {
+      final stats = weekData.days[dayNames[i]];
+      completedSpots
+          .add(FlSpot(i.toDouble(), (stats?.completed ?? 0).toDouble()));
+      acceptedSpots
+          .add(FlSpot(i.toDouble(), (stats?.accepted ?? 0).toDouble()));
+      rejectedSpots
+          .add(FlSpot(i.toDouble(), (stats?.rejected ?? 0).toDouble()));
+    }
+
+    final maxValue = [
+      ...completedSpots.map((e) => e.y),
+      ...acceptedSpots.map((e) => e.y),
+      ...rejectedSpots.map((e) => e.y),
+    ].reduce((a, b) => a > b ? a : b);
+
+    return _buildChartCard(
+      title: 'Weekly Analysis',
+      subtitle: weekData.weekRange,
+      stats: weekData.total,
+      chart: _buildLineChart(
+        completedSpots: completedSpots,
+        acceptedSpots: acceptedSpots,
+        rejectedSpots: rejectedSpots,
+        maxValue: maxValue,
+        maxX: 6.0,
+        xLabels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      ),
+    );
+  }
+
+  Widget _buildMonthlyChart(MonthPeriodAnalytics monthData) {
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    final completedSpots = <FlSpot>[];
+    final acceptedSpots = <FlSpot>[];
+    final rejectedSpots = <FlSpot>[];
+
+    for (int i = 0; i < monthNames.length; i++) {
+      final stats = monthData.months[monthNames[i]];
+      completedSpots
+          .add(FlSpot(i.toDouble(), (stats?.completed ?? 0).toDouble()));
+      acceptedSpots
+          .add(FlSpot(i.toDouble(), (stats?.accepted ?? 0).toDouble()));
+      rejectedSpots
+          .add(FlSpot(i.toDouble(), (stats?.rejected ?? 0).toDouble()));
+    }
+
+    final maxValue = [
+      ...completedSpots.map((e) => e.y),
+      ...acceptedSpots.map((e) => e.y),
+      ...rejectedSpots.map((e) => e.y),
+    ].reduce((a, b) => a > b ? a : b);
+
+    return _buildChartCard(
+      title: 'Monthly Analysis',
+      subtitle: 'Year ${monthData.year}',
+      stats: monthData.total,
+      chart: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 900,
+          child: _buildLineChart(
+            completedSpots: completedSpots,
+            acceptedSpots: acceptedSpots,
+            rejectedSpots: rejectedSpots,
+            maxValue: maxValue,
+            maxX: 11.0,
+            xLabels: [
+              'Jan',
+              'Feb',
+              'Mar',
+              'Apr',
+              'May',
+              'Jun',
+              'Jul',
+              'Aug',
+              'Sep',
+              'Oct',
+              'Nov',
+              'Dec'
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildYearlyChart(YearlyAnalytics yearlyData) {
+    final years = yearlyData.years.keys.toList()..sort();
+    if (years.isEmpty) {
+      return _buildEmptyChart('No yearly data available');
+    }
+
+    final completedSpots = <FlSpot>[];
+    final acceptedSpots = <FlSpot>[];
+    final rejectedSpots = <FlSpot>[];
+
+    for (int i = 0; i < years.length; i++) {
+      final stats = yearlyData.years[years[i]];
+      completedSpots
+          .add(FlSpot(i.toDouble(), (stats?.completed ?? 0).toDouble()));
+      acceptedSpots
+          .add(FlSpot(i.toDouble(), (stats?.accepted ?? 0).toDouble()));
+      rejectedSpots
+          .add(FlSpot(i.toDouble(), (stats?.rejected ?? 0).toDouble()));
+    }
+
+    final maxValue = [
+      ...completedSpots.map((e) => e.y),
+      ...acceptedSpots.map((e) => e.y),
+      ...rejectedSpots.map((e) => e.y),
+    ].reduce((a, b) => a > b ? a : b);
+
+    final totalStats = TaskStats(
+      completed: years.fold(
+          0, (sum, year) => sum + (yearlyData.years[year]?.completed ?? 0)),
+      accepted: years.fold(
+          0, (sum, year) => sum + (yearlyData.years[year]?.accepted ?? 0)),
+      rejected: years.fold(
+          0, (sum, year) => sum + (yearlyData.years[year]?.rejected ?? 0)),
+    );
+
+    return _buildChartCard(
+      title: 'Yearly Comparison',
+      subtitle: 'Year-over-year analysis',
+      stats: totalStats,
+      chart: _buildLineChart(
+        completedSpots: completedSpots,
+        acceptedSpots: acceptedSpots,
+        rejectedSpots: rejectedSpots,
+        maxValue: maxValue,
+        maxX: (years.length - 1).toDouble(),
+        xLabels: years,
+      ),
+    );
+  }
+
+  Widget _buildChartCard({
+    required String title,
+    required String subtitle,
+    required Widget chart,
+    required TaskStats? stats,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 12),
           Text(
-            value,
+            title,
             style: GoogleFonts.poppins(
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: color,
+              color: AppTheme.textPrimaryColor,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            label,
+            subtitle,
             style: GoogleFonts.poppins(
               fontSize: 12,
               color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 20),
+          chart,
+          if (stats != null) ...[
+            const SizedBox(height: 24),
+            _buildStatsRow(stats),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(TaskStats stats) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildCompactStatBadge(
+          label: 'Completed',
+          value: stats.completed.toString(),
+          color: const Color(0xFF4CAF50),
+        ),
+        _buildCompactStatBadge(
+          label: 'Accepted',
+          value: stats.accepted.toString(),
+          color: const Color(0xFF2196F3),
+        ),
+        _buildCompactStatBadge(
+          label: 'Rejected',
+          value: stats.rejected.toString(),
+          color: const Color(0xFFF44336),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactStatBadge({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textSecondaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineChart({
+    required List<FlSpot> completedSpots,
+    required List<FlSpot> acceptedSpots,
+    required List<FlSpot> rejectedSpots,
+    required double maxValue,
+    required double maxX,
+    required List<String> xLabels,
+  }) {
+    return SizedBox(
+      height: 300,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: (maxValue > 0 ? maxValue : 1) / 4,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withOpacity(0.15),
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              );
+            },
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index >= 0 && index < xLabels.length) {
+                    return Text(
+                      xLabels[index],
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          minX: 0,
+          maxX: maxX,
+          minY: 0,
+          maxY: (maxValue > 0 ? maxValue : 1) + 1,
+          lineBarsData: [
+            _buildLineBarData(completedSpots, const Color(0xFF4CAF50)),
+            _buildLineBarData(acceptedSpots, const Color(0xFF2196F3)),
+            _buildLineBarData(rejectedSpots, const Color(0xFFF44336)),
+          ],
+          lineTouchData: LineTouchData(
+            enabled: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+              tooltipPadding: const EdgeInsets.all(10),
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((LineBarSpot touchedBarSpot) {
+                  final value = touchedBarSpot.y.toInt();
+                  return LineTooltipItem(
+                    '$value',
+                    GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  LineChartBarData _buildLineBarData(List<FlSpot> spots, Color color) {
+    return LineChartBarData(
+      spots: spots,
+      isCurved: true,
+      color: color,
+      barWidth: 3.5,
+      isStrokeCapRound: true,
+      dotData: const FlDotData(show: false),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withOpacity(0.08),
+      ),
+    );
+  }
+
+  Widget _buildEmptyChart(String message) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white,
+            Colors.grey.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          message,
+          style: GoogleFonts.poppins(
+            color: AppTheme.textSecondaryColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Upcoming Services',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryColor,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildHorizontalUpcomingCard(
+                  serviceName: 'Monthly\nMaintenance',
+                  customerName: 'Pending',
+                  daysLeft: 'In 10 days',
+                  icon: Icons.build_circle,
+                  color: AppTheme.primaryColor,
+                ),
+                const SizedBox(width: 12),
+                _buildHorizontalUpcomingCard(
+                  serviceName: 'Filter\nReplacement',
+                  customerName: 'Scheduled',
+                  daysLeft: 'In 5 days',
+                  icon: Icons.filter_alt,
+                  color: const Color(0xFF2196F3),
+                ),
+                const SizedBox(width: 12),
+                _buildHorizontalUpcomingCard(
+                  serviceName: 'Quarterly\nInspection',
+                  customerName: 'Pending',
+                  daysLeft: 'In 15 days',
+                  icon: Icons.checklist,
+                  color: const Color(0xFFFF9800),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHorizontalUpcomingCard({
+    required String serviceName,
+    required String customerName,
+    required String daysLeft,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            serviceName,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryColor,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            customerName,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              daysLeft,
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

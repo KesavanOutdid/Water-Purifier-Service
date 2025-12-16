@@ -61,8 +61,6 @@ class _ServiceScreenState extends State<ServiceScreen>
     try {
       final response = await _apiService.getEngineerTasks(
         engineerId: engineerId,
-        page: currentPage,
-        limit: pageSize,
       );
 
       if (response['success'] == true && response['data'] != null) {
@@ -189,6 +187,19 @@ class _ServiceScreenState extends State<ServiceScreen>
   String _formatDateTime(DateTime utcDateTime) {
     DateTime ist = utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
     return DateFormat('dd/MM/yyyy hh:mm a').format(ist);
+  }
+
+  String _getStatusDateText(TaskModel task) {
+    switch (task.taskStatus) {
+      case 'accepted':
+        return 'Accepted: ${task.acceptedTime != null ? _formatDateTime(task.acceptedTime!) : _formatDateTime(task.assignedTime)}';
+      case 'completed':
+        return 'Completed: ${task.completedTime != null ? _formatDateTime(task.completedTime!) : _formatDateTime(task.assignedTime)}';
+      case 'rejected':
+        return 'Rejected: ${task.rejectedTime != null ? _formatDateTime(task.rejectedTime!) : _formatDateTime(task.assignedTime)}';
+      default:
+        return 'Assigned: ${_formatDateTime(task.assignedTime)}';
+    }
   }
 
   @override
@@ -436,7 +447,7 @@ class _ServiceScreenState extends State<ServiceScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Assigned: ${_formatDateTime(task.assignedTime)}',
+                  _getStatusDateText(task),
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     color: AppTheme.textSecondaryColor,
