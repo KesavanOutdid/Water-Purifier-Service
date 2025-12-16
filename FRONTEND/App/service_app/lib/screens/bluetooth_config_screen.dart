@@ -418,7 +418,8 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
 
         if (!mounted) return;
 
-        if (handshakeResponse['status'] == 1) {
+        final status = handshakeResponse['status'] ?? 0;
+        if (status == 1) {
           setState(() {
             connectedDeviceInfo = deviceInfo;
             isConnecting = false;
@@ -433,18 +434,35 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             message: handshakeResponse['message'] ?? 'Device connected successfully',
           );
         } else {
+          await _bluetoothService.disconnect();
           throw Exception(handshakeResponse['message'] ?? 'Connection handshake failed');
         }
       } else if (deviceInfo.bleDevice != null) {
         _logger.i('BLE device detected: ${deviceInfo.name}. Starting connection...');
         
-        await deviceInfo.bleDevice!.connect(
-          timeout: const Duration(seconds: 15),
-          autoConnect: false,
-          license: License.free,
-        );
+        try {
+          await deviceInfo.bleDevice!.connect(
+            timeout: const Duration(seconds: 30),
+            autoConnect: false,
+            license: License.free,
+          );
+          
+          _logger.i('Successfully connected to BLE device: ${deviceInfo.name}');
+        } catch (e) {
+          _logger.e('BLE connection failed: $e');
+          String errorMessage = 'Failed to establish BLE connection';
+          
+          if (e.toString().contains('GATT_CONNECTION_TIMEOUT') || 
+              e.toString().contains('timeout') ||
+              e.toString().contains('147')) {
+            errorMessage = 'Connection timeout. Device may be out of range or not responding. Please try again.';
+          } else if (e.toString().contains('already connected')) {
+            errorMessage = 'Device is already connected';
+          }
+          
+          throw Exception(errorMessage);
+        }
         
-        _logger.i('Successfully connected to BLE device: ${deviceInfo.name}');
         if (!mounted) return;
 
         setState(() {
@@ -461,18 +479,21 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
 
         _logger.d('Handshake response: $handshakeResponse');
 
-        if (handshakeResponse['status'] == 1) {
+        final status = handshakeResponse['status'] ?? 0;
+        if (status == 1) {
           setState(() {
             isConnecting = false;
             isConnectionSuccessful = true;
           });
           
+          _logger.i('✅ BLE device connected: ${deviceInfo.name}');
           AlertUtils.showSuccessAlert(
             context,
             title: 'Connection Successful',
             message: handshakeResponse['message'] ?? 'Device connected successfully',
           );
         } else {
+          await _bluetoothService.disconnect();
           throw Exception(handshakeResponse['message'] ?? 'Connection handshake failed');
         }
       } else {
@@ -508,12 +529,14 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
       _logger.d('Reset response: $resetResponse');
 
       if (mounted) {
-        if (resetResponse['status'] == 1) {
+        final status = resetResponse['status'] ?? 0;
+        if (status == 1) {
           setState(() {
             isResetting = false;
             isResetSuccessful = true;
           });
           
+          _logger.i('✅ Device reset completed successfully');
           AlertUtils.showSuccessAlert(
             context,
             title: 'Reset Successful',

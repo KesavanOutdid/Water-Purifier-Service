@@ -101,8 +101,23 @@ class BluetoothDeviceService {
       final responseString = result['data'] as String;
       _logger.d('Raw response: $responseString');
       
-      final responseJson = jsonDecode(responseString.trim()) as Map<String, dynamic>;
+      Map<String, dynamic> responseJson;
+      try {
+        responseJson = jsonDecode(responseString.trim()) as Map<String, dynamic>;
+      } catch (e) {
+        _logger.w('Response is not JSON: $responseString, treating as plain text response');
+        responseJson = {
+          'status': 1,
+          'message': responseString.trim(),
+        };
+      }
+      
       _logger.i('Parsed response: $responseJson');
+      
+      if (responseJson['status'] == null) {
+        _logger.w('Response missing status field, assuming success');
+        responseJson['status'] = 1;
+      }
       
       _responseController.add(responseJson);
       return responseJson;
@@ -219,7 +234,22 @@ class BluetoothDeviceService {
                   final responseString = utf8.decode(value);
                   _logger.d('BLE notification received: $responseString');
                   
-                  final responseJson = jsonDecode(responseString.trim()) as Map<String, dynamic>;
+                  Map<String, dynamic> responseJson;
+                  try {
+                    responseJson = jsonDecode(responseString.trim()) as Map<String, dynamic>;
+                  } catch (e) {
+                    _logger.w('BLE response is not JSON: $responseString, treating as plain text response');
+                    responseJson = {
+                      'status': 1,
+                      'message': responseString.trim(),
+                    };
+                  }
+                  
+                  if (responseJson['status'] == null) {
+                    _logger.w('BLE response missing status field, assuming success');
+                    responseJson['status'] = 1;
+                  }
+                  
                   _responseController.add(responseJson);
                 } catch (e) {
                   _logger.e('Error parsing BLE notification: $e');
