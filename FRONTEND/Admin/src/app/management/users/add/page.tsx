@@ -95,7 +95,7 @@ export default function AddUser() {
         distributor: distributorId,
         local_distributor: localDistributorId,
       }));
-      fetchDistributors();
+      fetchDistributors(defaultRoles);
     }
   }, [user?.email, user?.user_id, user?.roles]);
 
@@ -134,7 +134,17 @@ export default function AddUser() {
         const userRoles = user?.roles || [];
         
         if (userRoles.includes(1)) {
-          filtered = response.data;
+          if (roleIds.includes(3)) {
+            filtered = response.data.filter((u: any) => 
+              u.roles && u.roles.includes(2)
+            );
+          } else if (roleIds.includes(4)) {
+            filtered = response.data.filter((u: any) => 
+              u.roles && (u.roles.includes(2) || u.roles.includes(3))
+            );
+          } else {
+            filtered = response.data;
+          }
         } else if (userRoles.includes(2) && !userRoles.includes(1)) {
           filtered = response.data.filter((u: any) => 
             u.user_id === userId || (u.roles?.includes(3) && u.distributor === userId)
@@ -535,11 +545,12 @@ export default function AddUser() {
                 </div>
               </div>
 
-              {formData.roles.includes(3) && user?.roles?.includes(1) && (
+              {formData.roles.includes(3) && !formData.roles.includes(4) && user?.roles?.includes(1) && (
                 <div>
                   <label className="text-base font-semibold text-dark dark:text-white">
-                    Select Distributor <span className="text-red-500">*</span>
+                   Select the Distributor for Local Distributor<span className="text-red-500">*</span>
                   </label>
+                
                   <select
                     value={formData.distributor || ""}
                     onChange={(e) => handleDistributorChange(e, 'distributor')}
@@ -561,26 +572,26 @@ export default function AddUser() {
                 <>
                   <div>
                     <label className="text-base font-semibold text-dark dark:text-white">
-                      Select Distributor <span className="text-red-500">*</span>
+                      Select the Distributor for Service Engineer <span className="text-red-500">*</span>
                     </label>
+                  
                     <select
                       value={formData.distributor || ""}
                       onChange={(e) => handleDistributorChange(e, 'distributor')}
                       className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
-                      disabled={user?.roles?.includes(2) || user?.roles?.includes(3)}
                     >
                       <option value="">-- Select Distributor --</option>
-                      {user?.roles?.includes(2) && user?.user_id === formData.distributor && (
+                      {user?.roles?.includes(2) && (
                         <option key={user.user_id} value={user.user_id}>
                           {user.name} ({user.email}) - Distributor
                         </option>
                       )}
-                      {user?.roles?.includes(3) && user?.distributor === formData.distributor && (
+                      {user?.roles?.includes(3) && user?.distributor && (
                         <option key={user.distributor} value={user.distributor}>
                           {user.distributor_name} ({user.distributor_email || distributors.find(d => d.user_id === user.distributor)?.email || 'N/A'}) - Distributor
                         </option>
                       )}
-                      {distributors
+                      {user?.roles?.includes(1) && distributors
                         .filter((dist) => dist.roles?.includes(2))
                         .map((dist) => (
                           <option key={dist.user_id} value={dist.user_id}>
@@ -592,8 +603,11 @@ export default function AddUser() {
 
                   <div>
                     <label className="text-base font-semibold text-dark dark:text-white">
-                      Select Local Distributor <span className="text-red-500">*</span>
+                                          Select the Local Distributor for this Service Engineer
+ <span className="text-red-500">*</span>
                     </label>
+                   
+                  
                     <select
                       value={formData.local_distributor || ""}
                       onChange={(e) => handleDistributorChange(e, 'local_distributor')}

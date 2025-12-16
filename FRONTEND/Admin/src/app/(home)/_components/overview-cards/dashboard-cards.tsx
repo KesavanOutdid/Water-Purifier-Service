@@ -38,7 +38,6 @@ export function DashboardOverviewCards() {
           label="Total Roles"
           data={{
             value: compactFormat(data.total_roles || 0),
-            growthRate: 0,
           }}
           Icon={icons.Users}
         />
@@ -49,7 +48,6 @@ export function DashboardOverviewCards() {
           label="Total Users"
           data={{
             value: compactFormat(data.total_users || 0),
-            growthRate: 0,
           }}
           Icon={icons.Views}
         />
@@ -60,7 +58,6 @@ export function DashboardOverviewCards() {
           label="Total Tasks"
           data={{
             value: compactFormat(data.total_tasks || 0),
-            growthRate: 0,
           }}
           Icon={icons.Profit}
         />
@@ -71,7 +68,6 @@ export function DashboardOverviewCards() {
           label="Total Devices"
           data={{
             value: compactFormat(data.total_devices),
-            growthRate: 0,
           }}
           Icon={icons.Product}
         />
@@ -82,7 +78,6 @@ export function DashboardOverviewCards() {
           label="Active Models"
           data={{
             value: compactFormat(data.active_models),
-            growthRate: 0,
           }}
           Icon={icons.Product}
         />

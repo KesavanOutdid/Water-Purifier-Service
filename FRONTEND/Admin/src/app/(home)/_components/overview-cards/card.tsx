@@ -6,47 +6,47 @@ type PropsType = {
   label: string;
   data: {
     value: number | string;
-    growthRate: number;
+    growthRate?: number;
   };
   Icon: (props: SVGProps<SVGSVGElement>) => JSX.Element;
 };
 
 export function OverviewCard({ label, data, Icon }: PropsType) {
-  const isDecreasing = data.growthRate < 0;
+  const isDecreasing = data.growthRate !== undefined && data.growthRate < 0;
 
   return (
-    <div className="rounded-[10px] bg-white p-6 shadow-1 dark:bg-gray-dark">
-      <Icon />
+    <div className="rounded-[10px] bg-white p-5 shadow-1 dark:bg-gray-dark">
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="flex-shrink-0">
+            <Icon />
+          </div>
 
-      <div className="mt-6 flex items-end justify-between">
-        <dl>
-          <dt className="mb-1.5 text-heading-6 font-bold text-dark dark:text-white">
-            {data.value}
-          </dt>
+          <dl>
+            <dd className="text-sm font-medium text-dark-5">{label}</dd>
+            <dt className="text-lg font-semibold text-dark dark:text-white">
+              + {data.value}
+            </dt>
+          </dl>
+        </div>
 
-          <dd className="text-sm font-medium text-dark-6">{label}</dd>
-        </dl>
-
-        <dl
-          className={cn(
-            "text-sm font-medium",
-            isDecreasing ? "text-red" : "text-green",
-          )}
-        >
-          <dt className="flex items-center gap-1.5">
-            {data.growthRate}%
-            {isDecreasing ? (
-              <ArrowDownIcon aria-hidden />
-            ) : (
-              <ArrowUpIcon aria-hidden />
+        {data.growthRate !== undefined && (
+          <dl
+            className={cn(
+              "text-sm font-medium flex-shrink-0",
+              isDecreasing ? "text-red" : "text-green",
             )}
-          </dt>
-
-          <dd className="sr-only">
-            {label} {isDecreasing ? "Decreased" : "Increased"} by{" "}
-            {data.growthRate}%
-          </dd>
-        </dl>
+          >
+            <dt className="flex items-center gap-1">
+              {data.growthRate}%
+              {isDecreasing ? (
+                <ArrowDownIcon aria-hidden />
+              ) : (
+                <ArrowUpIcon aria-hidden />
+              )}
+            </dt>
+          </dl>
+        )}
       </div>
     </div>
   );

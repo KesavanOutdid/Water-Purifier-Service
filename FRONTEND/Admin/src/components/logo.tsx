@@ -5,10 +5,10 @@ export function Logo() {
     <div className="flex items-center justify-center h-1 w-full">
       <div className="relative h-20 w-24">
       <Image
-  src="/images/logo/serviceimagelogo.png"
+  src="/images/logo/Servicelogo.png"
   alt="Logo"
-  width={80}  // same as w-24
-  height={70} // same as h-8
+  width={80}
+  height={70}
   className="object-contain"
   quality={100}
 />

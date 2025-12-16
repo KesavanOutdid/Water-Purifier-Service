@@ -50,6 +50,7 @@ export default function EditDevice() {
   const [formData, setFormData] = useState<DeviceFormData>({
     device_id: "",
     model_id: "",
+    status: true,
   });
 
   useEffect(() => {

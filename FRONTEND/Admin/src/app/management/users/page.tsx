@@ -284,15 +284,7 @@ export default function ManageUsers() {
                           <PencilSquareIcon />
                         </button>
                       )}
-                      {permission?.can_delete && (
-                        <button
-                          onClick={() => handleDelete(user._id, user.name)}
-                          className="inline-flex items-center justify-center text-red-500 hover:text-red-700"
-                          title="Delete user"
-                        >
-                          <TrashIcon />
-                        </button>
-                      )}
+                    
                     </div>
                   </TableCell>
                 </TableRow>

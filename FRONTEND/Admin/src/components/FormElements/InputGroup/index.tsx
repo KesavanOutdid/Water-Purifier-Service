@@ -3,7 +3,7 @@ import { type HTMLInputTypeAttribute, useId } from "react";
 
 type InputGroupProps = {
   className?: string;
-  label: string;
+  label: string | React.ReactNode;
   placeholder: string;
   type: HTMLInputTypeAttribute;
   fileStyleVariant?: "style1" | "style2";

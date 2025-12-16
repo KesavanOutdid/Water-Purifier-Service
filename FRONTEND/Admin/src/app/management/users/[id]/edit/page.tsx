@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { apiCall } from "@/lib/api-client";
 import { useAuth } from "@/context/auth";
 import Swal from "sweetalert2";
-import { EyeIcon, EyeOffIcon } from "@/assets/icons";
 
 interface Role {
   _id: string;
@@ -31,6 +30,8 @@ interface UserFormData {
   number: string;
   status: boolean;
   address: AddressData;
+  distributor?: string;
+  local_distributor?: string;
 }
 
 interface FormErrors {
@@ -48,10 +49,10 @@ export default function EditUser() {
   const { user } = useAuth();
 
   const [roles, setRoles] = useState<Role[]>([]);
+  const [distributors, setDistributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
   const [initialFormData, setInitialFormData] = useState<UserFormData | null>(null);
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
@@ -77,6 +78,13 @@ export default function EditUser() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    if (user?.email) {
+      const userRoles = user?.roles || [];
+      fetchDistributors(formData.roles);
+    }
+  }, [user?.email, formData.roles]);
+
   const fetchRoles = async () => {
     try {
       const response = await apiCall<Role[]>(`/api/admin/roles?page=1&limit=100`);
@@ -100,7 +108,7 @@ export default function EditUser() {
       const userData: UserFormData = {
         name: data.name || "",
         email: data.email || "",
-        password: "",
+        password: data.password || "",
         roles: Array.isArray(data.roles) ? data.roles : [3],
         number: data.number || "",
         status: data.status !== undefined ? data.status : true,
@@ -121,6 +129,8 @@ export default function EditUser() {
           country: "India",
           pincode: "",
         },
+        distributor: data.distributor || "",
+        local_distributor: data.local_distributor || "",
       };
 
       setFormData(userData);
@@ -131,6 +141,71 @@ export default function EditUser() {
       router.back();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDistributors = async (roleIds: number[] = formData.roles) => {
+    try {
+      const userRoles = user?.roles || [];
+      const userId = user?.user_id;
+      
+      let url = `/api/admin/users?limit=1000`;
+      if (!userRoles.includes(1) && userId) {
+        url = `/api/admin/users?user_id=${userId}&limit=1000`;
+      }
+      
+      const response = await apiCall<any>(url, {}, true);
+      
+      if (response && response.data && Array.isArray(response.data)) {
+        let filtered: any[] = [];
+        const userRoles = user?.roles || [];
+        
+        if (userRoles.includes(1)) {
+          if (roleIds.includes(3)) {
+            filtered = response.data.filter((u: any) => 
+              u.roles && u.roles.includes(2)
+            );
+          } else if (roleIds.includes(4)) {
+            filtered = response.data.filter((u: any) => 
+              u.roles && (u.roles.includes(2) || u.roles.includes(3))
+            );
+          } else {
+            filtered = response.data;
+          }
+        } else if (userRoles.includes(2) && !userRoles.includes(1)) {
+          filtered = response.data.filter((u: any) => 
+            u.user_id === userId || (u.roles?.includes(3) && u.distributor === userId)
+          );
+          if (filtered.length === 0 && user) {
+            filtered = [{
+              user_id: user.user_id,
+              name: user.name,
+              email: user.email,
+              roles: user.roles
+            }];
+          }
+        } else if (userRoles.includes(3)) {
+          const currentUser = response.data.find((u: any) => u.user_id === userId);
+          filtered = response.data.filter((u: any) => 
+            u.user_id === userId || (u.user_id === currentUser?.distributor)
+          );
+        } else if (roleIds.includes(3)) {
+          filtered = response.data.filter((u: any) => 
+            u.roles && u.roles.includes(2)
+          );
+        } else if (roleIds.includes(4)) {
+          filtered = response.data.filter((u: any) => 
+            u.roles && (u.roles.includes(2) || u.roles.includes(3))
+          );
+        }
+        
+        setDistributors(filtered);
+      } else {
+        setDistributors([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch distributors:", error);
+      setDistributors([]);
     }
   };
 
@@ -145,6 +220,8 @@ export default function EditUser() {
       status: formData.status,
       address: formData.address,
       password: formData.password,
+      distributor: formData.distributor,
+      local_distributor: formData.local_distributor,
     };
 
     const initialData = {
@@ -155,6 +232,8 @@ export default function EditUser() {
       status: initialFormData.status,
       address: initialFormData.address,
       password: initialFormData.password,
+      distributor: initialFormData.distributor,
+      local_distributor: initialFormData.local_distributor,
     };
 
     return JSON.stringify(currentData) !== JSON.stringify(initialData);
@@ -220,6 +299,41 @@ export default function EditUser() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleRoleChange = (roleId: number, isChecked: boolean) => {
+    let updatedRoles: number[];
+    
+    if (isChecked) {
+      updatedRoles = [...formData.roles, roleId].sort((a, b) => a - b);
+    } else {
+      updatedRoles = formData.roles.filter(r => r !== roleId);
+    }
+
+    const userRoles = user?.roles || [];
+    let distributorId: string | undefined = undefined;
+    let localDistributorId: string | undefined = undefined;
+    
+    if (userRoles.includes(2)) {
+      distributorId = user?.user_id;
+    } else if (userRoles.includes(3)) {
+      distributorId = user?.distributor;
+    }
+    
+    if (userRoles.includes(3) && updatedRoles.includes(4)) {
+      localDistributorId = user?.user_id;
+    }
+
+    setFormData({
+      ...formData,
+      roles: updatedRoles,
+      distributor: distributorId,
+      local_distributor: localDistributorId,
+    });
+    
+    if (updatedRoles.length > 0) {
+      fetchDistributors(updatedRoles);
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     isAddress: boolean = false
@@ -236,12 +350,7 @@ export default function EditUser() {
         },
       });
     } else {
-      if (name === "roles") {
-        setFormData({
-          ...formData,
-          roles: [parseInt(value)],
-        });
-      } else if (name === "status") {
+      if (name === "status") {
         setFormData({ ...formData, [name]: isCheckbox ? (e.target as any).checked : value === "true" });
       } else if (name === "number") {
         const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
@@ -280,6 +389,14 @@ export default function EditUser() {
 
       if (formData.password && formData.password.trim()) {
         updateData.password = formData.password;
+      }
+
+      if (formData.distributor) {
+        updateData.distributor = formData.distributor;
+      }
+
+      if (formData.local_distributor) {
+        updateData.local_distributor = formData.local_distributor;
       }
 
       await apiCall(`/api/admin/users/${userId}`, {
@@ -379,28 +496,19 @@ export default function EditUser() {
                 <label className="text-base font-semibold text-dark dark:text-white">
                   Password
                 </label>
-                <div className="relative mt-2">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password || ""}
-                    onChange={handleChange}
-                    placeholder="Enter new password (min 4 chars, must contain a number)"
-                    maxLength={50}
-                    className={`w-full rounded-lg border-[1.5px] bg-transparent px-5 py-3 pr-12 text-dark outline-none transition dark:bg-dark-2 dark:text-white ${
-                      errors.password
-                        ? "border-red-500 focus:border-red-500 dark:border-red-500"
-                        : "border-stroke focus:border-primary dark:border-dark-3 dark:focus:border-primary"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4.5 top-1/2 -translate-y-1/2 text-dark-6 hover:text-dark dark:text-dark-6 dark:hover:text-white transition"
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  name="password"
+                  value={formData.password || ""}
+                  onChange={handleChange}
+                  placeholder="Enter new password (min 4 chars, must contain a number)"
+                  maxLength={50}
+                  className={`mt-2 w-full rounded-lg border-[1.5px] bg-transparent px-5 py-3 text-dark outline-none transition dark:bg-dark-2 dark:text-white ${
+                    errors.password
+                      ? "border-red-500 focus:border-red-500 dark:border-red-500"
+                      : "border-stroke focus:border-primary dark:border-dark-3 dark:focus:border-primary"
+                  }`}
+                />
                 {errors.password && (
                   <p className="mt-1 text-xs text-red-500">{errors.password}</p>
                 )}
@@ -433,20 +541,45 @@ export default function EditUser() {
 
               <div>
                 <label className="text-base font-semibold text-dark dark:text-white">
-                  Role
+                  Role <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="roles"
-                  value={formData.roles[0] || ""}
-                  onChange={handleChange}
-                  className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
-                >
-                  {roles.map((role) => (
-                    <option key={role.role_id} value={role.role_id}>
-                      {role.role_name}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-2 rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-2 dark:border-dark-3 dark:bg-dark-2">
+                  <div className="space-y-2">
+                    {roles
+                      .filter((role) => {
+                        const userRoles = user?.roles || [];
+                        
+                        if (userRoles.includes(1)) {
+                          return true;
+                        } else if (userRoles.includes(2)) {
+                          return role.role_id === 3 || role.role_id === 4;
+                        } else if (userRoles.includes(3)) {
+                          return role.role_id === 4;
+                        }
+                        return false;
+                      })
+                      .map((role) => (
+                        <div
+                          key={role.role_id}
+                          className="flex items-center rounded-lg px-1 py-1.5 transition hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`role_${role.role_id}`}
+                            checked={formData.roles.includes(role.role_id)}
+                            onChange={(e) => handleRoleChange(role.role_id, e.target.checked)}
+                            className="h-5 w-5 cursor-pointer rounded border-[1.5px] border-stroke accent-primary dark:border-dark-3 dark:bg-dark-2"
+                          />
+                          <label
+                            htmlFor={`role_${role.role_id}`}
+                            className="ml-3 cursor-pointer text-sm font-medium text-dark dark:text-white"
+                          >
+                            {role.role_name}
+                          </label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -464,6 +597,94 @@ export default function EditUser() {
                 </select>
               </div>
             </div>
+
+            {formData.roles.includes(3) && !formData.roles.includes(4) && user?.roles?.includes(1) && (
+              <div>
+                <label className="text-base font-semibold text-dark dark:text-white">
+                  Distributor <span className="text-red-500">*</span>
+                </label>
+              
+                <select
+                  value={formData.distributor || ""}
+                  onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
+                  className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+                >
+                  <option value="">-- Select Distributor --</option>
+                  {distributors
+                    .filter((dist) => dist.roles?.includes(2))
+                    .map((dist) => (
+                      <option key={dist.user_id} value={dist.user_id}>
+                        {dist.name} ({dist.email}) - Distributor
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+
+            {formData.roles.includes(4) && (
+              <>
+                <div className="mb-5.5">
+                  <label className="text-base font-semibold text-dark dark:text-white">
+                    Distributor <span className="text-red-500">*</span>
+                  </label>
+               
+                  <select
+                    value={formData.distributor || ""}
+                    onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
+                    className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+                  >
+                    <option value="">-- Select Distributor --</option>
+                    {user?.roles?.includes(2) && (
+                      <option key={user.user_id} value={user.user_id}>
+                        {user.name} ({user.email}) - Distributor
+                      </option>
+                    )}
+                    {user?.roles?.includes(3) && user?.distributor && (
+                      <option key={user.distributor} value={user.distributor}>
+                        {user.distributor_name} ({user.distributor_email || distributors.find(d => d.user_id === user.distributor)?.email || 'N/A'}) - Distributor
+                      </option>
+                    )}
+                    {user?.roles?.includes(1) && distributors
+                      .filter((dist) => dist.roles?.includes(2))
+                      .map((dist) => (
+                        <option key={dist.user_id} value={dist.user_id}>
+                          {dist.name} ({dist.email}) - Distributor
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-base font-semibold text-dark dark:text-white">
+                    Local Distributor <span className="text-red-500">*</span>
+                  </label>
+                 
+                  <select
+                    value={formData.local_distributor || ""}
+                    onChange={(e) => setFormData({ ...formData, local_distributor: e.target.value })}
+                    className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+                    disabled={user?.roles?.includes(3)}
+                  >
+                    <option value="">-- Select Local Distributor --</option>
+                    {user?.roles?.includes(3) && user?.user_id === formData.local_distributor && (
+                      <option key={user.user_id} value={user.user_id}>
+                        {user.name} ({user.email}) - Local Distributor
+                      </option>
+                    )}
+                    {distributors
+                      .filter((dist) => 
+                        dist.roles?.includes(3) && 
+                        (formData.distributor ? dist.distributor === formData.distributor : true)
+                      )
+                      .map((dist) => (
+                        <option key={dist.user_id} value={dist.user_id}>
+                          {dist.name} ({dist.email}) - Local Distributor
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div className="mb-6 border-t border-stroke pt-6 dark:border-dark-3">
               <h3 className="mb-4 text-body-lg font-bold text-dark dark:text-white">

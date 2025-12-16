@@ -3,10 +3,50 @@ import { formatMessageTime } from "@/lib/format-message-time";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { getChatsData } from "../fetch";
 
 export async function ChatsCard() {
-  const data = await getChatsData();
+  const data = [
+    {
+      profile: "/images/user/user-01.png",
+      name: "Devid Heaton",
+      isActive: true,
+      lastMessage: {
+        content: "You there?",
+        timestamp: "2024-12-16T10:30:00.000Z",
+      },
+      unreadCount: 0,
+    },
+    {
+      profile: "/images/user/user-02.png",
+      name: "Jitu Chauhan",
+      isActive: true,
+      lastMessage: {
+        content: "Thanks, It's awesome!",
+        timestamp: "2024-12-16T09:15:00.000Z",
+      },
+      unreadCount: 2,
+    },
+    {
+      profile: "/images/user/user-03.png",
+      name: "Micheal Gough",
+      isActive: false,
+      lastMessage: {
+        content: "We should have a call to discuss the design",
+        timestamp: "2024-12-16T08:45:00.000Z",
+      },
+      unreadCount: 0,
+    },
+    {
+      profile: "/images/user/user-04.png",
+      name: "John Doe",
+      isActive: true,
+      lastMessage: {
+        content: "See you at the meeting",
+        timestamp: "2024-12-16T07:30:00.000Z",
+      },
+      unreadCount: 1,
+    },
+  ];
 
   return (
     <div className="col-span-12 rounded-[10px] bg-white py-6 shadow-1 dark:bg-gray-dark dark:shadow-card xl:col-span-4">

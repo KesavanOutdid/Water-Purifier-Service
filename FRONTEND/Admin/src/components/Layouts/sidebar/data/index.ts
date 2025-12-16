@@ -19,6 +19,9 @@ export const NAV_DATA: NavSection[] = [
     label: "MAIN MENU",
     items: [
       {
+        type: "gap",
+      } as any,
+      {
         title: "Dashboard",
         icon: Icons.HomeIcon,
         url: "/",

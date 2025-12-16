@@ -87,6 +87,33 @@ export default function AddInstallationTask() {
 
   const isSuperAdmin = user?.role_names?.includes("Super Admin");
   const isLocalDistributor = user?.role_names?.includes("Local Distributor");
+  const isDistributor = user?.role_names?.includes("Distributor") && !isSuperAdmin;
+
+  const fetchLocalDistributorsForUser = async (distributorId: string) => {
+    try {
+      setLoadingLocalDist(true);
+      console.log("Fetching local distributors for:", distributorId);
+      const response = await apiCall<any>(
+        `/api/admin/users?user_id=${distributorId}`,
+        {},
+        true
+      );
+
+      console.log("Local distributors response:", response);
+      if (response && response.data && Array.isArray(response.data)) {
+        const filteredLocalDist = response.data.filter((u: any) =>
+          u.role_names?.includes("Local Distributor")
+        );
+        console.log("Filtered local distributors:", filteredLocalDist);
+        setLocalDistributors(filteredLocalDist);
+      }
+    } catch (error) {
+      console.error("Failed to fetch local distributors:", error);
+      setLocalDistributors([]);
+    } finally {
+      setLoadingLocalDist(false);
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -100,7 +127,18 @@ export default function AddInstallationTask() {
       }));
     }
 
-    if (isLocalDistributor && user?.distributor) {
+    if (isDistributor && user?.user_id) {
+      setFormData((prev) => ({
+        ...prev,
+        distributor_id: user.user_id,
+      }));
+      
+      if (user?.name) {
+        setDistributorName(user.name);
+      }
+
+      fetchLocalDistributorsForUser(user.user_id);
+    } else if (isLocalDistributor && user?.distributor) {
       setFormData((prev) => ({
         ...prev,
         distributor_id: user.distributor,
@@ -115,15 +153,20 @@ export default function AddInstallationTask() {
         setLocalDistributorName(user.name);
       }
     }
-  }, [user]);
+  }, [user, isSuperAdmin, isDistributor, isLocalDistributor]);
 
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [modelsRes, distributorsRes] = await Promise.all([
-        apiCall<any>(`/api/admin/models`, {}, true),
-        isSuperAdmin ? apiCall<any>(`/api/admin/users`, {}, true) : Promise.resolve(null),
-      ]);
+      const requests: Promise<any>[] = [apiCall<any>(`/api/admin/models`, {}, true)];
+      
+      if (isSuperAdmin) {
+        requests.push(apiCall<any>(`/api/admin/users`, {}, true));
+      }
+
+      const responses = await Promise.all(requests);
+      const modelsRes = responses[0];
+      const distributorsRes = isSuperAdmin ? responses[1] : null;
 
       if (modelsRes && modelsRes.data && Array.isArray(modelsRes.data)) {
         setModels(modelsRes.data);
@@ -151,26 +194,7 @@ export default function AddInstallationTask() {
     }));
 
     if (distributorId) {
-      try {
-        setLoadingLocalDist(true);
-        const response = await apiCall<any>(
-          `/api/admin/users?user_id=${distributorId}`,
-          {},
-          true
-        );
-
-        if (response && response.data && Array.isArray(response.data)) {
-          const filteredLocalDist = response.data.filter((u: any) =>
-            u.role_names?.includes("Local Distributor")
-          );
-          setLocalDistributors(filteredLocalDist);
-        }
-      } catch (error) {
-        console.error("Failed to fetch local distributors:", error);
-        setLocalDistributors([]);
-      } finally {
-        setLoadingLocalDist(false);
-      }
+      await fetchLocalDistributorsForUser(distributorId);
     }
   };
 
@@ -548,7 +572,7 @@ export default function AddInstallationTask() {
           </div>
         )}
 
-        {isLocalDistributor && (
+        {!isSuperAdmin && (
           <div className="rounded-[10px] bg-white px-7.5 pb-7.5 pt-7.5 shadow-1 dark:bg-gray-dark dark:shadow-card">
             <h2 className="mb-6 text-body-lg font-bold text-dark dark:text-white">
               Distribution Information
@@ -571,12 +595,33 @@ export default function AddInstallationTask() {
                 <label className="text-base font-semibold text-dark dark:text-white">
                   Local Distributor
                 </label>
-                <input
-                  type="text"
-                  value={localDistributorName}
-                  disabled
-                  className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-gray-100 px-5 py-3 text-dark outline-none disabled:cursor-not-allowed dark:border-dark-3 dark:bg-dark-3 dark:text-white"
-                />
+                {isLocalDistributor ? (
+                  <input
+                    type="text"
+                    value={localDistributorName}
+                    disabled
+                    className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-gray-100 px-5 py-3 text-dark outline-none disabled:cursor-not-allowed dark:border-dark-3 dark:bg-dark-3 dark:text-white"
+                  />
+                ) : (
+                  <select
+                    name="local_distributor_id"
+                    value={formData.local_distributor_id}
+                    onChange={handleChange}
+                    disabled={loadingLocalDist}
+                    className="mt-2 w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary dark:disabled:bg-dark-3"
+                  >
+                    <option value="">
+                      {loadingLocalDist
+                        ? "Loading..."
+                        : "Select a local distributor"}
+                    </option>
+                    {localDistributors.map((localDist) => (
+                      <option key={localDist._id} value={localDist.user_id}>
+                        {localDist.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>

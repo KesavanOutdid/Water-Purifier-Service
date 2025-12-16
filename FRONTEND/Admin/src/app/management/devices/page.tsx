@@ -498,7 +498,7 @@ export default function ManageDevices() {
                     </TableCell>
                   )}
                   <TableCell className="!text-right xl:pr-7.5">
-                    <div className="flex items-center justify-end gap-x-3">
+                    <div className="flex items-center justify-center gap-x-3">
                       {permission?.can_view && (
                         <button
                           onClick={() => router.push(`/management/devices/${device.device_id}`)}
@@ -508,15 +508,7 @@ export default function ManageDevices() {
                           <EyeIcon />
                         </button>
                       )}
-                      {permission?.can_delete && (
-                        <button
-                          onClick={() => handleDelete(device._id, device.name)}
-                          className="inline-flex items-center justify-center text-red-500 hover:text-red-700"
-                          title="Delete device"
-                        >
-                          <TrashIcon />
-                        </button>
-                      )}
+                   
                     </div>
                   </TableCell>
                 </TableRow>

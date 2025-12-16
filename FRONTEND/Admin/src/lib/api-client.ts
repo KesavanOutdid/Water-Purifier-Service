@@ -16,6 +16,16 @@ interface ApiResponse<T> {
 
 export async function apiCall<T>(
   endpoint: string,
+  options?: RequestInit,
+  returnFullResponse?: false
+): Promise<T>;
+export async function apiCall<T>(
+  endpoint: string,
+  options?: RequestInit,
+  returnFullResponse?: true
+): Promise<ApiResponse<T>>;
+export async function apiCall<T>(
+  endpoint: string,
   options: RequestInit = {},
   returnFullResponse: boolean = false
 ): Promise<T | ApiResponse<T>> {

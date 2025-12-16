@@ -21,10 +21,15 @@ interface UserDetail {
   name: string;
   email: string;
   number: string;
+  password: string;
   roles: number[];
   role_names: string[];
   status: boolean;
   address: Address;
+  distributor?: string;
+  distributor_name?: string;
+  local_distributor?: string | null;
+  local_distributor_name?: string | null;
   created_by: string;
   created_at: string;
   modified_by: string | null;
@@ -232,6 +237,15 @@ export default function ViewUser() {
 
             <div>
               <label className="text-base font-semibold text-dark dark:text-white">
+                Password
+              </label>
+              <p className="mt-2 text-base text-dark dark:text-white">
+                {user.password || "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-base font-semibold text-dark dark:text-white">
                 Role
               </label>
               <p className="mt-2 text-base text-dark dark:text-white">
@@ -256,6 +270,28 @@ export default function ViewUser() {
                
               </div>
             </div>
+
+            {user.distributor_name && (
+              <div>
+                <label className="text-base font-semibold text-dark dark:text-white">
+                  Distributor
+                </label>
+                <p className="mt-2 text-base text-dark dark:text-white">
+                  {user.distributor_name || "N/A"}
+                </p>
+              </div>
+            )}
+
+            {user.local_distributor_name && (
+              <div>
+                <label className="text-base font-semibold text-dark dark:text-white">
+                  Local Distributor
+                </label>
+                <p className="mt-2 text-base text-dark dark:text-white">
+                  {user.local_distributor_name || "N/A"}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="text-base font-semibold text-dark dark:text-white">

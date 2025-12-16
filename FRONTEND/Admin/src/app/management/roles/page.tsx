@@ -244,7 +244,7 @@ export default function ManageRoles() {
                       {permission?.can_view && (
                         <button
                           onClick={() => handleViewRole(String(role.role_id))}
-                          className="hover:text-primary"
+                          className="text-primary hover:text-opacity-80"
                           title="View"
                         >
                           <EyeIcon className="w-5 h-5" />
@@ -253,7 +253,7 @@ export default function ManageRoles() {
                       {permission?.can_update && (
                         <button
                           onClick={() => handleEditRole(String(role.role_id))}
-                          className="hover:text-primary"
+                          className="text-primary hover:text-opacity-80"
                           title="Edit"
                         >
                           <PencilSquareIcon className="w-5 h-5" />

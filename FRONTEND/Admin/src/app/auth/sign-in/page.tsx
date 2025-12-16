@@ -54,24 +54,24 @@ export default function SignIn() {
         <div className="w-full p-6 sm:p-10 xl:p-12">
           
           {/* LOGO */}
-          <Link className="mb-4 flex justify-center" href="/">
+          <Link className=" flex justify-center" href="/">
             <Image
-              src={"/images/logo/support.png"}
+              src={"/images/logo/servicelogo.png"}
               alt="Logo"
-              width={70}
+              width={120}
               height={64}
             />
           </Link>
 
           {/* WELCOME TITLE */}
-          <h2 className="text-center text-xl text-dark dark:text-white mb-8">
+          <h2 className="text-center text-xl text-dark dark:text-white ">
             Welcome Back!
           </h2>
 
           <form onSubmit={handleSubmit}>
             <InputGroup
               type="email"
-              label="Email"
+              label={<>Email <span className="text-red-600">*</span></>}
               className="mb-4 [&_input]:py-[15px]"
               placeholder="Enter your email"
               name="email"
@@ -83,7 +83,7 @@ export default function SignIn() {
             {/* PASSWORD INPUT */}
             <div className="mb-5">
               <label className="text-body-sm font-medium text-dark dark:text-white">
-                Password
+                Password <span className="text-red-600">*</span>
               </label>
               <div className="relative mt-3">
                 <input
@@ -92,6 +92,7 @@ export default function SignIn() {
                   placeholder="Enter your password"
                   onChange={handleChange}
                   value={data.password}
+                  required
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5.5 py-3 pr-12 text-dark placeholder:text-dark-6 outline-none transition focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
                 />
                 <button

@@ -1,0 +1,29 @@
+
+> free-nextadmin-nextjs@1.2.2 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled successfully in 9.2s
+   Running TypeScript ...
+Failed to compile.
+
+./src/app/management/devices/[id]/edit/page.tsx:50:60
+Type error: Argument of type '{ device_id: string; model_id: string; }' is not assignable to parameter of type 'DeviceFormData | (() => DeviceFormData)'.
+  Property 'status' is missing in type '{ device_id: string; model_id: string; }' but required in type 'DeviceFormData'.
+
+[0m [90m 48 |[39m   [36mconst[39m [submitting[33m,[39m setSubmitting] [33m=[39m useState([36mfalse[39m)[33m;[39m
+ [90m 49 |[39m   [36mconst[39m [errors[33m,[39m setErrors] [33m=[39m useState[33m<[39m[33mFormErrors[39m[33m>[39m({})[33m;[39m
+[31m[1m>[22m[39m[90m 50 |[39m   [36mconst[39m [formData[33m,[39m setFormData] [33m=[39m useState[33m<[39m[33mDeviceFormData[39m[33m>[39m({
+ [90m    |[39m                                                            [31m[1m^[22m[39m
+ [90m 51 |[39m     device_id[33m:[39m [32m""[39m[33m,[39m
+ [90m 52 |[39m     model_id[33m:[39m [32m""[39m[33m,[39m
+ [90m 53 |[39m   })[33m;[39m[0m
+Next.js build worker exited with code: 1 and signal: null

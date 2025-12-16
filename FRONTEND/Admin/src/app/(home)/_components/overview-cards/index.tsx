@@ -1,10 +1,22 @@
 import { compactFormat } from "@/lib/format-number";
-import { getOverviewData } from "../../fetch";
 import { OverviewCard } from "./card";
 import * as icons from "./icons";
 
 export async function OverviewCardsGroup() {
-  const { views, profit, products, users } = await getOverviewData();
+  const { views, profit, products, users } = {
+    views: {
+      value: 8846,
+    },
+    profit: {
+      value: 15620,
+    },
+    products: {
+      value: 386,
+    },
+    users: {
+      value: 1200,
+    },
+  };
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4 2xl:gap-7.5">

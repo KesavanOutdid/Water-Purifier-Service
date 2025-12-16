@@ -38,7 +38,7 @@ export function Sidebar() {
     // Keep collapsible open, when it's subpage is active
     filteredNav.some((section) => {
       return section.items.some((item) => {
-        if ((item as any).type === "divider" || !item.items) {
+        if ((item as any).type === "divider" || (item as any).type === "gap" || !item.items) {
           return false;
         }
         return item.items.some((subItem) => {
@@ -101,8 +101,8 @@ export function Sidebar() {
           {/* Navigation */}
           <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3 min-[850px]:mt-10">
             {filteredNav.map((section) => (
-              <div key={section.label} className="mb-6">
-                <h2 className="mb-5 text-sm font-medium text-dark-4 dark:text-dark-6">
+              <div key={section.label} className="mb-3 mt-6">
+                <h2 className="mb-0 text-sm font-medium text-dark-4 dark:text-dark-6">
                   {section.label}
                 </h2>
 
@@ -114,6 +114,11 @@ export function Sidebar() {
                           <li key={`divider-${index}`} className="my-3">
                             <div className="h-px bg-gray-200 dark:bg-gray-700" />
                           </li>
+                        );
+                      }
+                      if ((item as any).type === "gap") {
+                        return (
+                          <li key={`gap-${index}`} className="h-6" />
                         );
                       }
                       return (
