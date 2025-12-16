@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:convert';
 import '../models/service_model.dart';
 import '../services/api_service.dart';
+import '../services/bluetooth_device_service.dart';
 import '../themes/app_theme.dart';
 import '../utils/alert_utils.dart';
 
@@ -49,6 +50,7 @@ class BluetoothDeviceInfo {
 
 class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
   final ApiService _apiService = ApiService();
+  final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   final Logger _logger = Logger();
   static const platform = MethodChannel('com.example.service_app/bluetooth');
   
@@ -82,6 +84,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
   void dispose() {
     scanSubscription?.cancel();
     adapterStateSubscription?.cancel();
+    _bluetoothService.dispose();
     super.dispose();
   }
 
@@ -404,24 +407,34 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
 
       if (deviceInfo.isClassic) {
         _logger.i('Classic Bluetooth (BR/EDR) device detected: ${deviceInfo.name}');
-        _logger.i('Establishing direct socket connection to device...');
+        _logger.i('Sending connect handshake to device...');
         
-        await _connectClassicBluetooth(deviceInfo);
-        
-        if (!mounted) return;
-        setState(() {
-          connectedDeviceInfo = deviceInfo;
-          isConnecting = false;
-          isConnectionSuccessful = true;
-        });
-        
-        _logger.i('✅ Classic Bluetooth device connected: ${deviceInfo.name}');
-        
-        AlertUtils.showSuccessAlert(
-          context,
-          title: 'Classic Bluetooth Connected',
-          message: 'Device: ${deviceInfo.name}\n\nSuccessfully connected and ready for configuration.',
+        final handshakeResponse = await _bluetoothService.sendConnectHandshake(
+          bluetoothMac: deviceInfo.address,
+          isClassic: true,
         );
+
+        _logger.d('Handshake response: $handshakeResponse');
+
+        if (!mounted) return;
+
+        if (handshakeResponse['status'] == 1) {
+          setState(() {
+            connectedDeviceInfo = deviceInfo;
+            isConnecting = false;
+            isConnectionSuccessful = true;
+          });
+          
+          _logger.i('✅ Classic Bluetooth device connected: ${deviceInfo.name}');
+          
+          AlertUtils.showSuccessAlert(
+            context,
+            title: 'Connection Successful',
+            message: handshakeResponse['message'] ?? 'Device connected successfully',
+          );
+        } else {
+          throw Exception(handshakeResponse['message'] ?? 'Connection handshake failed');
+        }
       } else if (deviceInfo.bleDevice != null) {
         _logger.i('BLE device detected: ${deviceInfo.name}. Starting connection...');
         
@@ -439,7 +452,29 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
           connectedDeviceInfo = deviceInfo;
         });
 
-        await _sendDeviceHandshake(deviceInfo);
+        _logger.i('Sending connect handshake to BLE device...');
+        final handshakeResponse = await _bluetoothService.sendConnectHandshake(
+          bluetoothMac: deviceInfo.address,
+          isClassic: false,
+          bleDevice: deviceInfo.bleDevice,
+        );
+
+        _logger.d('Handshake response: $handshakeResponse');
+
+        if (handshakeResponse['status'] == 1) {
+          setState(() {
+            isConnecting = false;
+            isConnectionSuccessful = true;
+          });
+          
+          AlertUtils.showSuccessAlert(
+            context,
+            title: 'Connection Successful',
+            message: handshakeResponse['message'] ?? 'Device connected successfully',
+          );
+        } else {
+          throw Exception(handshakeResponse['message'] ?? 'Connection handshake failed');
+        }
       } else {
         throw Exception('Invalid device information');
       }
@@ -456,102 +491,41 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
     }
   }
 
-  Future<void> _sendDeviceHandshake(BluetoothDeviceInfo deviceInfo) async {
-    try {
-      _logger.i('Sending handshake to device: ${deviceInfo.name}');
-      final handshakeData = {
-        'command': 'connect',
-        'bluetooth_mac': deviceInfo.address,
-        'device_type': deviceInfo.type,
-        'timestamp': DateTime.now().toUtc().toIso8601String(),
-      };
-
-      _logger.d('Handshake data: $handshakeData');
-
-      final response = await _apiService.sendDeviceHandshake(
-        deviceId: deviceInfo.address,
-        taskId: widget.task.taskId,
-        engineerId: widget.engineerId,
-        handshakeData: handshakeData,
-      );
-
-      _logger.d('Handshake response: $response');
-
-      if (mounted) {
-        if (response['status'] == 1 || response['success'] == true) {
-          _logger.i('Device handshake successful: ${deviceInfo.name}');
-          setState(() {
-            isConnecting = false;
-            isConnectionSuccessful = true;
-          });
-          
-          AlertUtils.showSuccessAlert(
-            context,
-            title: 'Connection Successful',
-            message: '${deviceInfo.name} (${deviceInfo.type}) connected successfully',
-          );
-        } else {
-          throw Exception(response['message'] ?? 'Connection handshake failed');
-        }
-      }
-    } catch (e) {
-      _logger.e('Handshake error: $e');
-      if (mounted) {
-        setState(() => isConnecting = false);
-        AlertUtils.showErrorAlert(
-          context,
-          title: 'Connection Failed',
-          message: e.toString(),
-        );
-      }
-    }
-  }
-
   Future<void> _sendResetCommand() async {
     if (connectedDeviceInfo == null) return;
 
     setState(() => isResetting = true);
 
     try {
-      if (connectedDeviceInfo!.isClassic) {
-        _logger.i('Sending reset command via Classic Bluetooth...');
-        await _sendClassicBluetoothReset(connectedDeviceInfo!);
-      } else {
-        _logger.i('Sending reset command via BLE...');
-        final resetData = {
-          'command': 'reset',
-          'reset_type': selectedResetType ?? 'auto',
-          'bluetooth_mac': connectedDeviceInfo!.address,
-          'timestamp': DateTime.now().toUtc().toIso8601String(),
-        };
+      _logger.i('Sending reset command to device...');
+      
+      final resetResponse = await _bluetoothService.sendResetCommand(
+        bluetoothMac: connectedDeviceInfo!.address,
+        isClassic: connectedDeviceInfo!.isClassic,
+        bleDevice: connectedDeviceInfo!.bleDevice,
+      );
 
-        final response = await _apiService.sendDeviceReset(
-          deviceId: connectedDeviceInfo!.address,
-          taskId: widget.task.taskId,
-          engineerId: widget.engineerId,
-          resetData: resetData,
-        );
-
-        if (response['status'] != 1 && response['success'] != true) {
-          throw Exception(response['message'] ?? 'Reset command failed');
-        }
-      }
+      _logger.d('Reset response: $resetResponse');
 
       if (mounted) {
-        setState(() {
-          isResetting = false;
-          isResetSuccessful = true;
-        });
-        
-        AlertUtils.showSuccessAlert(
-          context,
-          title: 'Reset Successful',
-          message: 'Device reset completed successfully',
-          onClose: () {
-            widget.onConfigSuccess();
-            Navigator.of(context).pop();
-          },
-        );
+        if (resetResponse['status'] == 1) {
+          setState(() {
+            isResetting = false;
+            isResetSuccessful = true;
+          });
+          
+          AlertUtils.showSuccessAlert(
+            context,
+            title: 'Reset Successful',
+            message: resetResponse['message'] ?? 'Device reset completed successfully',
+            onClose: () {
+              widget.onConfigSuccess();
+              Navigator.of(context).pop();
+            },
+          );
+        } else {
+          throw Exception(resetResponse['message'] ?? 'Reset command failed');
+        }
       }
     } catch (e) {
       _logger.e('Reset error: $e');
