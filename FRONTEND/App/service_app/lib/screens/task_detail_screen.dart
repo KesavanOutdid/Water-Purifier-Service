@@ -33,14 +33,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   late AnimationController _animationController;
   final ApiService _apiService = ApiService();
   final ImagePicker _imagePicker = ImagePicker();
-  
+
   late TaskModel currentTask;
   List<File> selectedPhotos = [];
   String deviceId = '';
   String rejectReason = '';
   bool isLoading = false;
+  bool isUploadingPhotos = false;
   String? error;
-  
+
   bool _isCustomerExpanded = true;
   bool _isDeviceExpanded = false;
   bool _isAssignmentExpanded = false;
@@ -50,7 +51,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     'Device not working as expected',
     'Customer not available',
     'Need to reschedule',
-    'Other'
+    // 'Other'
   ];
 
   @override
@@ -62,6 +63,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       vsync: this,
     );
     _animationController.forward();
+    _refreshTaskDetails();
   }
 
   @override
@@ -89,7 +91,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage(ImageSource source,
+      {VoidCallback? onPickStart, VoidCallback? onPickEnd}) async {
     if (selectedPhotos.length >= 3) {
       AlertUtils.showWarningAlert(
         context,
@@ -100,18 +103,37 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
 
     try {
+      onPickStart?.call();
       final XFile? pickedFile = await _imagePicker.pickImage(source: source);
       if (pickedFile != null) {
         setState(() {
           selectedPhotos.add(File(pickedFile.path));
         });
       }
+      onPickEnd?.call();
     } catch (e) {
+      onPickEnd?.call();
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
         message: 'Error picking image: $e',
       );
+    }
+  }
+
+  Future<void> _refreshTaskDetails() async {
+    try {
+      final response = await _apiService.getTaskById(currentTask.taskId);
+
+      if (response['success'] == true && response['data'] != null) {
+        if (mounted) {
+          setState(() {
+            currentTask = TaskModel.fromJson(response['data']);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error refreshing task details: $e');
     }
   }
 
@@ -128,15 +150,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       );
 
       if (response['success'] == true) {
-        AlertUtils.showSuccessAlert(
-          context,
-          title: 'Success',
-          message: 'Task accepted successfully',
-          onClose: () {
-            widget.onTaskUpdated();
-            Navigator.of(context).pop();
-          },
-        );
+        await _refreshTaskDetails();
+        if (mounted) {
+          AlertUtils.showSuccessAlert(
+            context,
+            title: 'Success',
+            message: 'Task accepted successfully',
+            onClose: () {
+              widget.onTaskUpdated();
+              Navigator.of(context).pop();
+            },
+          );
+        }
       } else {
         setState(() {
           isLoading = false;
@@ -250,9 +275,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           context,
           title: 'Success',
           message: 'Task completed successfully',
-          onClose: () {
-            widget.onTaskUpdated();
-            Navigator.of(context).pop();
+          onClose: () async {
+            try {
+              await _apiService.getEngineerTasks(
+                engineerId: widget.engineerId,
+              );
+            } catch (e) {
+              print('Error refreshing tasks: $e');
+            }
+            if (mounted) {
+              widget.onTaskUpdated();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            }
           },
         );
       } else {
@@ -298,7 +332,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.warning_rounded, color: Colors.red, size: 24),
+                  child: const Icon(Icons.warning_rounded,
+                      color: Colors.red, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -329,7 +364,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                           leading: const Icon(Icons.edit, color: Colors.blue),
                           title: Text(
                             'Other (Manual Entry)',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                            style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600),
                           ),
                           onTap: () {
                             Navigator.pop(context);
@@ -351,7 +387,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                         leading: const Icon(Icons.check_circle_outline),
                         title: Text(
                           rejectReasons[index],
-                          style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                          style:
+                              GoogleFonts.poppins(fontWeight: FontWeight.w500),
                         ),
                         onTap: () {
                           setState(() {
@@ -505,10 +542,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
 
   void _showCompleteTaskDialog() {
     final deviceIdController = TextEditingController(text: deviceId);
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: !isUploadingPhotos,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -541,27 +579,67 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        _pickImage(ImageSource.camera);
-                        setModalState(() {});
-                      },
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Camera'),
+                if (isUploadingPhotos)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Uploading photo...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        _pickImage(ImageSource.gallery);
-                        setModalState(() {});
-                      },
-                      icon: const Icon(Icons.image),
-                      label: const Text('Gallery'),
-                    ),
-                  ],
-                ),
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _pickImage(
+                            ImageSource.camera,
+                            onPickStart: () {
+                              setModalState(() {
+                                isUploadingPhotos = true;
+                              });
+                            },
+                            onPickEnd: () {
+                              setModalState(() {
+                                isUploadingPhotos = false;
+                              });
+                            },
+                          );
+                        },
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Camera'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _pickImage(
+                            ImageSource.gallery,
+                            onPickStart: () {
+                              setModalState(() {
+                                isUploadingPhotos = true;
+                              });
+                            },
+                            onPickEnd: () {
+                              setModalState(() {
+                                isUploadingPhotos = false;
+                              });
+                            },
+                          );
+                        },
+                        icon: const Icon(Icons.image),
+                        label: const Text('Gallery'),
+                      ),
+                    ],
+                  ),
                 if (selectedPhotos.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -633,6 +711,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 TextField(
                   onChanged: (value) {
                     deviceId = value;
+                    setModalState(() {});
                   },
                   controller: deviceIdController,
                   decoration: InputDecoration(
@@ -646,6 +725,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                         await _scanQRCode((scannedValue) {
                           deviceIdController.text = scannedValue;
                           deviceId = scannedValue;
+                          setModalState(() {});
                         });
                       },
                     ),
@@ -656,9 +736,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   width: double.infinity,
                   child: CustomButton(
                     text: isLoading ? 'Completing...' : 'Complete Task',
-                    onPressed: isLoading ? () {} : () { _completeTask(); },
+                    onPressed: (selectedPhotos.isNotEmpty &&
+                            deviceId.isNotEmpty &&
+                            !isLoading &&
+                            !isUploadingPhotos)
+                        ? () {
+                            _completeTask();
+                          }
+                        : () {},
                   ),
                 ),
+                const SizedBox(height: 8),
+                if (selectedPhotos.isEmpty || deviceId.isEmpty)
+                  Text(
+                    selectedPhotos.isEmpty
+                        ? '⚠ Please add at least one photo'
+                        : '⚠ Please enter device ID',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -679,8 +778,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         elevation: 0,
       ),
       body: FadeTransition(
-        opacity: Tween<double>(begin: 0.0, end: 1.0)
-            .animate(_animationController),
+        opacity:
+            Tween<double>(begin: 0.0, end: 1.0).animate(_animationController),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
@@ -706,9 +805,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Name', currentTask.customerName),
                   ('Phone', currentTask.phone),
                   ('Email', currentTask.email),
-                  ('Address', currentTask.address.fullAddress.isEmpty
-                      ? 'No address'
-                      : currentTask.address.fullAddress),
+                  (
+                    'Address',
+                    currentTask.address.fullAddress.isEmpty
+                        ? 'No address'
+                        : currentTask.address.fullAddress
+                  ),
                 ],
               ),
               _buildCollapsibleSection(
@@ -728,7 +830,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 details: [
                   ('Model', currentTask.modelName),
                   ('Model ID', currentTask.modelId),
-                  ('Service Type', _getServiceTypeName(currentTask.serviceType)),
+                  (
+                    'Service Type',
+                    _getServiceTypeName(currentTask.serviceType)
+                  ),
                   ('Local Distributor', currentTask.localDistributorName),
                   ('Distributor', currentTask.distributorName),
                 ],
@@ -751,7 +856,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Task ID', '#${currentTask.taskId}'),
                   ('Engineer', currentTask.engineerName),
                   ('Assigned By', currentTask.assignedBy),
-                  ('Assigned', '${_formatDate(currentTask.assignedTime)} • ${_formatTime(currentTask.assignedTime)}'),
+                  (
+                    'Assigned',
+                    '${_formatDate(currentTask.assignedTime)} • ${_formatTime(currentTask.assignedTime)}'
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -836,7 +944,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -873,6 +982,60 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.devices_other,
+                  size: 16, color: Colors.white.withOpacity(0.8)),
+              const SizedBox(width: 6),
+              Text(
+                'Model: ${currentTask.modelName}',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+              ),
+            ],
+          ),
+          if (currentTask.taskStatus == 'completed' &&
+              currentTask.completedTime != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.check_circle,
+                    size: 16, color: Colors.white.withOpacity(0.8)),
+                const SizedBox(width: 6),
+                Text(
+                  'Completed: ${_formatDateTime(currentTask.completedTime!)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (currentTask.taskStatus == 'rejected' &&
+              currentTask.rejectedTime != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.cancel,
+                    size: 16, color: Colors.white.withOpacity(0.8)),
+                const SizedBox(width: 6),
+                Text(
+                  'Rejected: ${_formatDateTime(currentTask.rejectedTime!)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -970,57 +1133,55 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
               padding: const EdgeInsets.only(bottom: 10),
               child: Column(
-                children: details
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                      int index = entry.key;
-                      var (label, value) = entry.value;
-                      bool isLast = index == details.length - 1;
-                      return Container(
-                        decoration: BoxDecoration(
-                          border: isLast
-                              ? null
-                              : Border(
-                                  bottom: BorderSide(
-                                    color: AppTheme.dividerColor.withValues(alpha: 0.5),
-                                    width: 0.5,
-                                  ),
-                                ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                label,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppTheme.textSecondaryColor,
-                                  letterSpacing: 0.3,
-                                ),
+                children: details.asMap().entries.map((entry) {
+                  int index = entry.key;
+                  var (label, value) = entry.value;
+                  bool isLast = index == details.length - 1;
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: isLast
+                          ? null
+                          : Border(
+                              bottom: BorderSide(
+                                color: AppTheme.dividerColor
+                                    .withValues(alpha: 0.5),
+                                width: 0.5,
                               ),
-                              Expanded(
-                                child: Text(
-                                  value,
-                                  textAlign: TextAlign.right,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                            ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            label,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.textSecondaryColor,
+                              letterSpacing: 0.3,
+                            ),
                           ),
-                        ),
-                      );
-                    })
-                    .toList(),
+                          Expanded(
+                            child: Text(
+                              value,
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
         ],
@@ -1073,7 +1234,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         ],
       );
     } else if (currentTask.taskStatus == 'accepted') {
-      bool needsConfig = currentTask.configStatus == null || currentTask.configStatus == false;
+      bool needsConfig =
+          currentTask.configStatus == null || currentTask.configStatus == false;
 
       if (needsConfig) {
         return CustomButton(
@@ -1096,11 +1258,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         builder: (context) => BluetoothConfigScreen(
           task: currentTask,
           engineerId: widget.engineerId,
-          onConfigSuccess: () {
-            setState(() {
-              currentTask.configStatus = true;
-            });
-            widget.onTaskUpdated();
+          onConfigSuccess: () async {
+            await _refreshTaskDetails();
+            if (mounted) {
+              widget.onTaskUpdated();
+            }
           },
         ),
       ),
@@ -1108,17 +1270,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   }
 
   String _formatDate(DateTime utcDateTime) {
-    DateTime ist = utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
+    DateTime ist =
+        utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
     return DateFormat('dd/MM/yyyy').format(ist);
   }
 
   String _formatTime(DateTime utcDateTime) {
-    DateTime ist = utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
+    DateTime ist =
+        utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
     return DateFormat('hh:mm a').format(ist);
   }
 
   String _formatDateTime(DateTime utcDateTime) {
-    DateTime ist = utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
+    DateTime ist =
+        utcDateTime.toUtc().add(const Duration(hours: 5, minutes: 30));
     return DateFormat('dd/MM/yyyy hh:mm a').format(ist);
   }
 

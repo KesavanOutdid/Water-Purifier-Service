@@ -80,9 +80,9 @@ class _ServiceScreenState extends State<ServiceScreen>
           if (data['completed'] != null && (data['completed'] as List).isNotEmpty) {
             tasksList.addAll(data['completed'] as List);
           }
-          if (data['rejected'] != null && (data['rejected'] as List).isNotEmpty) {
-            tasksList.addAll(data['rejected'] as List);
-          }
+          // if (data['rejected'] != null && (data['rejected'] as List).isNotEmpty) {
+          //   tasksList.addAll(data['rejected'] as List);
+          // }
         } else if (data is List) {
           tasksList = data;
         }
@@ -135,8 +135,8 @@ class _ServiceScreenState extends State<ServiceScreen>
         return Colors.amber;
       case 'completed':
         return Colors.green;
-      case 'rejected':
-        return Colors.red;
+      // case 'rejected':
+      //   return Colors.red;
       default:
         return Colors.grey;
     }
@@ -195,8 +195,8 @@ class _ServiceScreenState extends State<ServiceScreen>
         return 'Accepted: ${task.acceptedTime != null ? _formatDateTime(task.acceptedTime!) : _formatDateTime(task.assignedTime)}';
       case 'completed':
         return 'Completed: ${task.completedTime != null ? _formatDateTime(task.completedTime!) : _formatDateTime(task.assignedTime)}';
-      case 'rejected':
-        return 'Rejected: ${task.rejectedTime != null ? _formatDateTime(task.rejectedTime!) : _formatDateTime(task.assignedTime)}';
+      // case 'rejected':
+      //   return 'Rejected: ${task.rejectedTime != null ? _formatDateTime(task.rejectedTime!) : _formatDateTime(task.assignedTime)}';
       default:
         return 'Assigned: ${_formatDateTime(task.assignedTime)}';
     }
@@ -280,7 +280,7 @@ class _ServiceScreenState extends State<ServiceScreen>
                                   _buildFilterChip('assigned', 'Assigned'),
                                   _buildFilterChip('accepted', 'Accepted'),
                                   _buildFilterChip('completed', 'Completed'),
-                                  _buildFilterChip('rejected', 'Rejected'),
+                                  // _buildFilterChip('rejected', 'Rejected'),
                                 ],
                               ),
                             ),

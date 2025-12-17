@@ -262,29 +262,29 @@ class _LoginScreenState extends State<LoginScreen>
                         isLoading: _isLoading,
                       ),
                       const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {},
-                            child: Text(
-                              'Sign Up',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Row(
+                      //   mainAxisAlignment: MainAxisAlignment.center,
+                      //   children: [
+                      //     Text(
+                      //       "Don't have an account? ",
+                      //       style: GoogleFonts.poppins(
+                      //         fontSize: 14,
+                      //         color: AppTheme.textSecondaryColor,
+                      //       ),
+                      //     ),
+                      //     GestureDetector(
+                      //       onTap: () {},
+                      //       child: Text(
+                      //         'Sign Up',
+                      //         style: GoogleFonts.poppins(
+                      //           fontSize: 14,
+                      //           color: AppTheme.primaryColor,
+                      //           fontWeight: FontWeight.w600,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                     ],
                   ),
                 ),

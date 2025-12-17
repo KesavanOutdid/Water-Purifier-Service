@@ -311,11 +311,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   Widget _buildSettingsSection() {
     return Column(
       children: [
-        _buildSectionHeader('Preferences'),
         _buildSettingsTile(
           icon: Icons.notifications,
           title: 'Notifications',
-          subtitle: 'Service reminders and updates',
           trailing: Switch(
             value: notificationsEnabled,
             onChanged: (value) {
@@ -326,45 +324,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             activeThumbColor: AppTheme.primaryColor,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildAboutSection() {
-    return Column(
-      children: [
-        _buildSectionHeader('Support'),
         _buildSettingsTile(
-          icon: Icons.help,
-          title: 'Help & Support',
-          subtitle: 'FAQs, contact & technical support',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const HelpSupportScreen(),
-              ),
-            );
-          },
+          icon: Icons.visibility_outlined,
+          title: 'Appearance',
+          onTap: () {},
         ),
-        const SizedBox(height: 16),
-        _buildSectionHeader('History'),
         _buildSettingsTile(
-          icon: Icons.history,
-          title: 'Service History',
-          subtitle: 'View your service requests',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => ServiceHistoryScreen(),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        _buildSectionHeader('About'),
-        _buildSettingsTile(
-          icon: Icons.privacy_tip,
-          title: 'Privacy Policy',
+          icon: Icons.lock_outline,
+          title: 'Privacy & Security',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -374,9 +341,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         _buildSettingsTile(
+          icon: Icons.headset_mic_outlined,
+          title: 'Help and Support',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const HelpSupportScreen(),
+              ),
+            );
+          },
+        ),
+        _buildSettingsTile(
           icon: Icons.info_outline,
           title: 'About',
-          subtitle: 'Version 1.0.0',
           onTap: () {
             _showAboutDialog();
           },
@@ -385,36 +362,20 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
+  Widget _buildAboutSection() {
+    return const SizedBox.shrink();
+  }
+
   Widget _buildLogoutSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.3),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: _animationController,
-          curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
-        )),
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  _showLogoutDialog();
-                },
-                icon: const Icon(Icons.logout, size: 16),
-                label: const Text('Logout'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.errorColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _buildSettingsTile(
+      icon: Icons.logout,
+      iconColor: AppTheme.errorColor,
+      title: 'Logout',
+      titleColor: AppTheme.errorColor,
+      onTap: () {
+        _showLogoutDialog();
+      },
+      showChevron: false,
     );
   }
 
@@ -441,7 +402,13 @@ class _SettingsScreenState extends State<SettingsScreen>
     String? subtitle,
     VoidCallback? onTap,
     Widget? trailing,
+    Color? iconColor,
+    Color? titleColor,
+    bool showChevron = true,
   }) {
+    final effectiveIconColor = iconColor ?? AppTheme.primaryColor;
+    final effectiveTitleColor = titleColor ?? AppTheme.textPrimaryColor;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
@@ -450,16 +417,16 @@ class _SettingsScreenState extends State<SettingsScreen>
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            color: effectiveIconColor.withValues(alpha: 0.1),
           ),
-          child: Icon(icon, color: AppTheme.primaryColor),
+          child: Icon(icon, color: effectiveIconColor),
         ),
         title: Text(
           title,
           style: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimaryColor,
+            color: effectiveTitleColor,
           ),
         ),
         subtitle: subtitle != null
@@ -471,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               )
             : null,
-        trailing: trailing ?? const Icon(Icons.chevron_right),
+        trailing: trailing ?? (showChevron ? const Icon(Icons.chevron_right) : null),
         onTap: onTap,
       ),
     );

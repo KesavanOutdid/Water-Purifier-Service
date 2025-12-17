@@ -104,7 +104,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
     List<BluetoothDeviceInfo> classicDevices = [];
     try {
       if (!Platform.isAndroid) {
-        _logger.i('Not Android platform, skipping classic Bluetooth scan');
+        // _logger.i('Not Android platform, skipping classic Bluetooth scan');
         return classicDevices;
       }
       
@@ -112,18 +112,18 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
       final List<dynamic> pairedDevices =
           await platform.invokeMethod('getPairedDevices');
       
-      _logger.i('MethodChannel returned ${pairedDevices.length} paired devices');
-      _logger.d('Raw paired devices response: $pairedDevices');
+      // _logger.i('MethodChannel returned ${pairedDevices.length} paired devices');
+      // _logger.d('Raw paired devices response: $pairedDevices');
       
       for (var device in pairedDevices) {
         final String address = device['address']?.toString() ?? '';
         final String name = device['name']?.toString() ?? 'Unknown Device';
         final String type = device['type']?.toString() ?? 'unknown';
         
-        _logger.d('Paired Device - Name: $name, Address: $address, Type: $type');
+        // _logger.d('Paired Device - Name: $name, Address: $address, Type: $type');
         
         if (type == 'BR/EDR' || type == '1' || type.toUpperCase() == 'DUAL') {
-          _logger.i('Adding classic Bluetooth device: $name ($address)');
+          // _logger.i('Adding classic Bluetooth device: $name ($address)');
           classicDevices.add(
             BluetoothDeviceInfo(
               address: address,
@@ -134,10 +134,10 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             ),
           );
         } else {
-          _logger.d('Skipping device with type: $type (not BR/EDR)');
+          // _logger.d('Skipping device with type: $type (not BR/EDR)');
         }
       }
-      _logger.i('Total classic Bluetooth devices found: ${classicDevices.length}');
+      // _logger.i('Total classic Bluetooth devices found: ${classicDevices.length}');
     } catch (e, stacktrace) {
       _logger.e('Error getting classic Bluetooth devices: $e');
       _logger.e('Stack trace: $stacktrace');
@@ -280,29 +280,15 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         return;
       }
 
-      _logger.i('Starting Bluetooth scan...');
+      // _logger.i('Starting Bluetooth scan...');
       setState(() => isScanning = true);
       availableDevices.clear();
       deviceDiscoveryTimes.clear();
       deviceRssiValues.clear();
 
-      _logger.i('Step 0: Adding static device (WPB4C81929E748) for testing');
-      final waterPurifierDevice = BluetoothDeviceInfo(
-        address: '48:E7:29:19:C8:B6',
-        name: 'WPB4C81929E748',
-        type: 'BR/EDR',
-        isClassic: true,
-        btDevice: null,
-      );
-      setState(() {
-        availableDevices.add(waterPurifierDevice);
-        deviceRssiValues['48:E7:29:19:C8:B6'] = -40;
-      });
-      _logger.i('✅ Static device added to list: WPB4C81929E748 (48:E7:29:19:C8:B6)');
-
-      _logger.i('Step 1: Scanning for classic Bluetooth (BR/EDR) devices');
+      // _logger.i('Step 1: Scanning for classic Bluetooth (BR/EDR) devices');
       final classicDevices = await _getClassicBluetoothDevices();
-      _logger.i('Found ${classicDevices.length} classic Bluetooth devices');
+      // _logger.i('Found ${classicDevices.length} classic Bluetooth devices');
       
       setState(() {
         for (var device in classicDevices) {
@@ -313,14 +299,14 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         }
       });
 
-      _logger.i('Step 2: Starting BLE scan with timeout: $scanTimeout');
+      // _logger.i('Step 2: Starting BLE scan with timeout: $scanTimeout');
       await FlutterBluePlus.startScan(
         timeout: scanTimeout,
       );
 
       scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         setState(() {
-          _logger.d('BLE Scan results received: ${results.length} devices');
+          // _logger.d('BLE Scan results received: ${results.length} devices');
           
           for (ScanResult result in results) {
             final deviceAddress = result.device.remoteId.str;
@@ -329,7 +315,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
 
             deviceRssiValues[deviceAddress] = rssi;
 
-            _logger.d('BLE Device - Name: $deviceName, Address: $deviceAddress, RSSI: $rssi');
+            // _logger.d('BLE Device - Name: $deviceName, Address: $deviceAddress, RSSI: $rssi');
 
             if (_isDeviceWithinRange(rssi)) {
               final exists = availableDevices.any(
@@ -337,7 +323,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
               );
               
               if (!exists) {
-                _logger.i('Adding BLE device: $deviceName ($deviceAddress)');
+                // _logger.i('Adding BLE device: $deviceName ($deviceAddress)');
                 availableDevices.add(
                   BluetoothDeviceInfo(
                     address: deviceAddress,
@@ -358,14 +344,14 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         });
       });
 
-      _logger.i('Waiting for BLE scan to complete...');
+      // _logger.i('Waiting for BLE scan to complete...');
       await Future.delayed(scanTimeout);
       await FlutterBluePlus.stopScan();
-      _logger.i('BLE scan completed. Total devices found: ${availableDevices.length}');
+      // _logger.i('BLE scan completed. Total devices found: ${availableDevices.length}');
       setState(() => isScanning = false);
     } catch (e) {
       setState(() => isScanning = false);
-      _logger.e('Scan error: $e');
+      // _logger.e('Scan error: $e');
       AlertUtils.showErrorAlert(
         context,
         title: 'Scan Error',
@@ -388,7 +374,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
 
   Future<void> _connectToDevice(BluetoothDeviceInfo deviceInfo) async {
     setState(() => isConnecting = true);
-    _logger.i('Attempting to connect to device: ${deviceInfo.name} (${deviceInfo.address})');
+    // _logger.i('Attempting to connect to device: ${deviceInfo.name} (${deviceInfo.address})');
 
     try {
       final hasPermission = await _requestBluetoothPermissions();
@@ -406,15 +392,15 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
       }
 
       if (deviceInfo.isClassic) {
-        _logger.i('Classic Bluetooth (BR/EDR) device detected: ${deviceInfo.name}');
-        _logger.i('Sending connect handshake to device...');
+        // _logger.i('Classic Bluetooth (BR/EDR) device detected: ${deviceInfo.name}');
+        // _logger.i('Sending connect handshake to device...');
         
         final handshakeResponse = await _bluetoothService.sendConnectHandshake(
           bluetoothMac: deviceInfo.address,
           isClassic: true,
         );
 
-        _logger.d('Handshake response: $handshakeResponse');
+        // _logger.d('Handshake response: $handshakeResponse');
 
         if (!mounted) return;
 
@@ -426,19 +412,19 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             isConnectionSuccessful = true;
           });
           
-          _logger.i('✅ Classic Bluetooth device connected: ${deviceInfo.name}');
+          // _logger.i('✅ Classic Bluetooth device connected: ${deviceInfo.name}');
           
-          AlertUtils.showSuccessAlert(
-            context,
-            title: 'Connection Successful',
-            message: handshakeResponse['message'] ?? 'Device connected successfully',
-          );
+          // AlertUtils.showSuccessAlert(
+          //   context,
+          //   title: 'Connection Successful',
+          //   message: handshakeResponse['message'] ?? 'Device connected successfully',
+          // );
         } else {
           await _bluetoothService.disconnect();
           throw Exception(handshakeResponse['message'] ?? 'Connection handshake failed');
         }
       } else if (deviceInfo.bleDevice != null) {
-        _logger.i('BLE device detected: ${deviceInfo.name}. Starting connection...');
+        // _logger.i('BLE device detected: ${deviceInfo.name}. Starting connection...');
         
         try {
           await deviceInfo.bleDevice!.connect(
@@ -447,9 +433,9 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             license: License.free,
           );
           
-          _logger.i('Successfully connected to BLE device: ${deviceInfo.name}');
+          // _logger.i('Successfully connected to BLE device: ${deviceInfo.name}');
         } catch (e) {
-          _logger.e('BLE connection failed: $e');
+          // _logger.e('BLE connection failed: $e');
           String errorMessage = 'Failed to establish BLE connection';
           
           if (e.toString().contains('GATT_CONNECTION_TIMEOUT') || 
@@ -470,14 +456,14 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
           connectedDeviceInfo = deviceInfo;
         });
 
-        _logger.i('Sending connect handshake to BLE device...');
+        // _logger.i('Sending connect handshake to BLE device...');
         final handshakeResponse = await _bluetoothService.sendConnectHandshake(
           bluetoothMac: deviceInfo.address,
           isClassic: false,
           bleDevice: deviceInfo.bleDevice,
         );
 
-        _logger.d('Handshake response: $handshakeResponse');
+        // _logger.d('Handshake response: $handshakeResponse');
 
         final status = handshakeResponse['status'] ?? 0;
         if (status == 1) {
@@ -486,7 +472,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             isConnectionSuccessful = true;
           });
           
-          _logger.i('✅ BLE device connected: ${deviceInfo.name}');
+          // _logger.i('✅ BLE device connected: ${deviceInfo.name}');
           AlertUtils.showSuccessAlert(
             context,
             title: 'Connection Successful',
@@ -500,7 +486,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         throw Exception('Invalid device information');
       }
     } catch (e) {
-      _logger.e('Connection error: $e');
+      // _logger.e('Connection error: $e');
       if (mounted) {
         setState(() => isConnecting = false);
         AlertUtils.showErrorAlert(
@@ -518,7 +504,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
     setState(() => isResetting = true);
 
     try {
-      _logger.i('Sending reset command to device...');
+      // _logger.i('Sending reset command to device...');
       
       final resetResponse = await _bluetoothService.sendResetCommand(
         bluetoothMac: connectedDeviceInfo!.address,
@@ -526,7 +512,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         bleDevice: connectedDeviceInfo!.bleDevice,
       );
 
-      _logger.d('Reset response: $resetResponse');
+      // _logger.d('Reset response: $resetResponse');
 
       if (mounted) {
         final status = resetResponse['status'] ?? 0;
@@ -536,7 +522,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             isResetSuccessful = true;
           });
           
-          _logger.i('✅ Device reset completed successfully');
+          // _logger.i('✅ Device reset completed successfully');
           
           AlertUtils.showSuccessAlert(
             context,
@@ -544,11 +530,46 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             message: resetResponse['message'] ?? 'Device reset completed successfully',
           );
           
-          Future.delayed(const Duration(seconds: 3), () {
+          Future.delayed(const Duration(seconds: 2), () async {
             if (mounted) {
-              Navigator.of(context).pop();
-              widget.onConfigSuccess();
-              Navigator.of(context).pop();
+              try {
+                // _logger.i('Calling configure task API with MAC ID: ${connectedDeviceInfo!.address}');
+                
+                await _apiService.configureTask(
+                  taskId: widget.task.taskId,
+                  engineerId: widget.engineerId,
+                  macId: connectedDeviceInfo!.address,
+                );
+
+                // _logger.i('✅ Task configured successfully');
+
+                if (mounted) {
+                  try {
+                    _logger.i('Refreshing tasks list...');
+                    await _apiService.getEngineerTasks(
+                      engineerId: widget.engineerId,
+                    );
+                    // _logger.i('✅ Tasks list refreshed');
+                  } catch (e) {
+                    _logger.e('Error refreshing tasks: $e');
+                  }
+
+                  if (mounted) {
+                    widget.onConfigSuccess();
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    Navigator.of(context).pop();
+                  }
+                }
+              } catch (e) {
+                // _logger.e('Configuration API error: $e');
+                if (mounted) {
+                  AlertUtils.showErrorAlert(
+                    context,
+                    title: 'Configuration Failed',
+                    message: 'Failed to save configuration: $e',
+                  );
+                }
+              }
             }
           });
         } else {
@@ -556,7 +577,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         }
       }
     } catch (e) {
-      _logger.e('Reset error: $e');
+      // _logger.e('Reset error: $e');
       if (mounted) {
         setState(() => isResetting = false);
         AlertUtils.showErrorAlert(

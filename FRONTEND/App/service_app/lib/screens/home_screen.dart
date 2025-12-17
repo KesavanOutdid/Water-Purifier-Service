@@ -767,93 +767,123 @@ class _HomeScreenState extends State<HomeScreen>
     required double maxX,
     required List<String> xLabels,
   }) {
+    final isWeeklyChart = xLabels.length == 7;
+    final isMonthlyChart = xLabels.length == 12;
+    final bottomReservedSize = isWeeklyChart ? 75.0 : isMonthlyChart ? 60.0 : 50.0;
+    final labelFontSize = isWeeklyChart ? 9.0 : isMonthlyChart ? 8.5 : 11.0;
+    final rotationAngle = (isWeeklyChart || isMonthlyChart) ? 0.5235987755982988 : 0.0;
+
     return SizedBox(
-      height: 300,
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: (maxValue > 0 ? maxValue : 1) / 4,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.withOpacity(0.15),
-                strokeWidth: 1,
-                dashArray: [5, 5],
-              );
-            },
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+      height: (isWeeklyChart || isMonthlyChart) ? 340 : 320,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: (isWeeklyChart || isMonthlyChart) ? 20.0 : 12.0,
+          left: 8.0,
+          right: 8.0,
+        ),
+        child: LineChart(
+          LineChartData(
+            clipData: FlClipData.all(),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: (maxValue > 0 ? maxValue : 1) / 4,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.withValues(alpha: 0.15),
+                  strokeWidth: 1,
+                  dashArray: [5, 5],
+                );
+              },
             ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 32,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index >= 0 && index < xLabels.length) {
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: bottomReservedSize,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final index = value.toInt();
+                    if (index >= 0 && index < xLabels.length) {
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        child: Transform.rotate(
+                          angle: rotationAngle,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: (isWeeklyChart || isMonthlyChart) ? 8.0 : 4.0,
+                              right: (isWeeklyChart || isMonthlyChart) ? 4.0 : 0.0,
+                            ),
+                            child: Text(
+                              xLabels[index],
+                              style: GoogleFonts.poppins(
+                                fontSize: labelFontSize,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondaryColor,
+                              ),
+                              textAlign: TextAlign.start,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
                     return Text(
-                      xLabels[index],
+                      value.toInt().toString(),
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: AppTheme.textSecondaryColor,
                       ),
                     );
-                  }
-                  return const SizedBox.shrink();
-                },
+                  },
+                ),
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  );
+            borderData: FlBorderData(show: false),
+            minX: 0,
+            maxX: maxX,
+            minY: 0,
+            maxY: (maxValue > 0 ? maxValue : 1) + 1,
+            lineBarsData: [
+              _buildLineBarData(completedSpots, const Color(0xFF4CAF50)),
+              _buildLineBarData(acceptedSpots, const Color(0xFF2196F3)),
+              _buildLineBarData(rejectedSpots, const Color(0xFFF44336)),
+            ],
+            lineTouchData: LineTouchData(
+              enabled: true,
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (touchedSpot) => Colors.grey[800]!,
+                tooltipPadding: const EdgeInsets.all(10),
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((LineBarSpot touchedBarSpot) {
+                    final value = touchedBarSpot.y.toInt();
+                    return LineTooltipItem(
+                      '$value',
+                      GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    );
+                  }).toList();
                 },
               ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          minX: 0,
-          maxX: maxX,
-          minY: 0,
-          maxY: (maxValue > 0 ? maxValue : 1) + 1,
-          lineBarsData: [
-            _buildLineBarData(completedSpots, const Color(0xFF4CAF50)),
-            _buildLineBarData(acceptedSpots, const Color(0xFF2196F3)),
-            _buildLineBarData(rejectedSpots, const Color(0xFFF44336)),
-          ],
-          lineTouchData: LineTouchData(
-            enabled: true,
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) => Colors.grey[800]!,
-              tooltipPadding: const EdgeInsets.all(10),
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((LineBarSpot touchedBarSpot) {
-                  final value = touchedBarSpot.y.toInt();
-                  return LineTooltipItem(
-                    '$value',
-                    GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
-              },
             ),
           ),
         ),

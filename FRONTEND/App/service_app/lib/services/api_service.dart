@@ -758,4 +758,49 @@ class ApiService {
       throw Exception('Network error: ${e.toString()}');
     }
   }
+
+  Future<Map<String, dynamic>> configureTask({
+    required int taskId,
+    required String engineerId,
+    required String macId,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/tasks/$taskId/configure';
+      
+      final body = {
+        'engineer_id': engineerId,
+        'mac_id': macId,
+      };
+
+      _logRequest('POST', endpoint, body: body);
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Failed to configure task');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
 }

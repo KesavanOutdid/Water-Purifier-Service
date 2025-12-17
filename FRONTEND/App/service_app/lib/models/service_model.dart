@@ -117,7 +117,7 @@ class TaskModel {
   final DateTime modifiedTime;
   final bool status;
   final String taskStatus;
-  final bool? configStatus;
+  bool? configStatus;
 
   TaskModel({
     required this.id,
@@ -151,9 +151,11 @@ class TaskModel {
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
-    bool isRejected = json['rejection_reason'] != null && json['rejection_reason'].toString().isNotEmpty;
-    String status = json['task_status'] ?? (isRejected ? 'rejected' : 'created');
-    
+    bool isRejected = json['rejection_reason'] != null &&
+        json['rejection_reason'].toString().isNotEmpty;
+    String status =
+        json['task_status'] ?? (isRejected ? 'rejected' : 'created');
+
     return TaskModel(
       id: json['_id'] ?? '',
       taskId: json['task_id'] ?? 0,
@@ -175,19 +177,25 @@ class TaskModel {
       assignedBy: json['assigned_by'] ?? '',
       assignedTime: json['assigned_time'] != null
           ? DateTime.parse(json['assigned_time'])
-          : (json['rejected_at'] != null ? DateTime.parse(json['rejected_at']) : DateTime.now()),
-      acceptedTime: json['accepted_at'] != null 
+          : (json['rejected_at'] != null
+              ? DateTime.parse(json['rejected_at'])
+              : DateTime.now()),
+      acceptedTime: json['accepted_at'] != null
           ? DateTime.parse(json['accepted_at'])
           : null,
       completedTime: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'])
-          : null,
+          : (json['completed_time'] != null
+              ? DateTime.parse(json['completed_time'])
+              : null),
       rejectedTime: json['rejected_at'] != null
           ? DateTime.parse(json['rejected_at'])
-          : null,
+          : (json['rejected_time'] != null
+              ? DateTime.parse(json['rejected_time'])
+              : null),
       taskHistory: json['task_history'] != null
-          ? List<TaskHistory>.from(
-              (json['task_history'] as List).map((h) => TaskHistory.fromJson(h)))
+          ? List<TaskHistory>.from((json['task_history'] as List)
+              .map((h) => TaskHistory.fromJson(h)))
           : [],
       createdBy: json['created_by'] ?? '',
       createdTime: json['created_time'] != null
@@ -199,7 +207,7 @@ class TaskModel {
           : DateTime.now(),
       status: json['status'] ?? true,
       taskStatus: status,
-      configStatus: json['config_status'],
+      configStatus: json['config_status'] ?? json['configStatus'],
     );
   }
 
