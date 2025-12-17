@@ -25,6 +25,7 @@ const checkAcceptanceTimeout = async () => {
         const tasksNeedingReassignment = await db.collection('tasks').find({
             task_status: 'assigned',
             status: true,
+            waiting: { $ne: true },
             assigned_time: { $lte: timeoutThreshold }
         }).toArray();
 
@@ -40,6 +41,7 @@ const checkAcceptanceTimeout = async () => {
         const tasksNeedingWarning1 = await db.collection('tasks').find({
             task_status: 'assigned',
             status: true,
+            waiting: { $ne: true },
             assigned_time: { $lte: warning1Threshold, $gt: warning2Threshold },
             'warnings.acceptance_warning_1': { $ne: true }
         }).toArray();
@@ -60,6 +62,7 @@ const checkAcceptanceTimeout = async () => {
         const tasksNeedingWarning2 = await db.collection('tasks').find({
             task_status: 'assigned',
             status: true,
+            waiting: { $ne: true },
             assigned_time: { $lte: warning2Threshold, $gt: timeoutThreshold },
             'warnings.acceptance_warning_2': { $ne: true }
         }).toArray();
@@ -97,6 +100,7 @@ const checkCompletionTimeout = async () => {
         const tasksNeedingReassignment = await db.collection('tasks').find({
             task_status: { $in: ['accepted', 'in_progress'] },
             status: true,
+            waiting: { $ne: true },
             $or: [
                 { assigned_time: { $lte: timeoutThreshold } },
                 { 
@@ -127,6 +131,7 @@ const checkCompletionTimeout = async () => {
         const tasksNeedingWarning1 = await db.collection('tasks').find({
             task_status: { $in: ['accepted', 'in_progress'] },
             status: true,
+            waiting: { $ne: true },
             'warnings.completion_warning_1': { $ne: true }
         }).toArray();
 
@@ -157,6 +162,7 @@ const checkCompletionTimeout = async () => {
         const tasksNeedingWarning2 = await db.collection('tasks').find({
             task_status: { $in: ['accepted', 'in_progress'] },
             status: true,
+            waiting: { $ne: true },
             'warnings.completion_warning_2': { $ne: true }
         }).toArray();
 

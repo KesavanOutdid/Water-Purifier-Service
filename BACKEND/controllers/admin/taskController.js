@@ -30,6 +30,7 @@ const createTask = async (req, res) => {
             model_id,
             distributor_id,
             local_distributor_id,
+            parts,
             created_by
         } = req.body;
 
@@ -79,6 +80,13 @@ const createTask = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'created_by is required'
+            });
+        }
+
+        if (service_type === 2 && parts && !Array.isArray(parts)) {
+            return res.status(400).json({
+                success: false,
+                message: 'parts must be an array'
             });
         }
 
@@ -150,6 +158,7 @@ const createTask = async (req, res) => {
             distributor_name: distributor_name,
             local_distributor_id: local_distributor_id || null,
             local_distributor_name: local_distributor_name,
+            parts: service_type === 2 ? (parts || []) : null,
             assigned_to: null,
             engineer_name: null,
             assigned_by: null,
@@ -445,6 +454,8 @@ const assignTask = async (req, res) => {
                     assigned_by,
                     assigned_time: new Date(),
                     task_status: 'assigned',
+                    waiting: false,
+                    waiting_reason: null,
                     modified_by: assigned_by,
                     modified_time: new Date()
                 },
@@ -569,6 +580,8 @@ const reassignTask = async (req, res) => {
                     assigned_by,
                     assigned_time: new Date(),
                     task_status: 'assigned',
+                    waiting: false,
+                    waiting_reason: null,
                     modified_by: assigned_by,
                     modified_time: new Date()
                 },
@@ -616,6 +629,52 @@ const reassignTask = async (req, res) => {
 };
 
 
+
+const getDevicesForServices = async (req, res) => {
+    try {
+        const { user_id, level } = req.query;
+        const db = getDB();
+
+        if (!user_id || !level) {
+            return res.status(400).json({
+                success: false,
+                message: 'user_id and level are required'
+            });
+        }
+
+        if (!['admin', 'distributor', 'local_distributor'].includes(level)) {
+            return res.status(400).json({
+                success: false,
+                message: 'level must be "admin", "distributor", or "local_distributor"'
+            });
+        }
+
+        let query = {
+            allotted: true,
+            status: true
+        };
+
+        if (level === 'distributor') {
+            query.assigned_to = user_id;
+        } else if (level === 'local_distributor') {
+            query.assigned_to_local = user_id;
+        }
+
+        const devices = await db.collection('devices').find(query).toArray();
+
+        res.json({
+            success: true,
+            data: devices,
+            count: devices.length
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching devices for services',
+            error: error.message
+        });
+    }
+};
 
 const getEngineerHistory = async (req, res) => {
     try {
@@ -672,5 +731,6 @@ module.exports = {
     getInstallation,
     assignTask,
     reassignTask,
+    getDevicesForServices,
     getEngineerHistory
 };

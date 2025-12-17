@@ -8,6 +8,7 @@ const {
     getTaskById,
     acceptTask,
     rejectTask,
+    waitTask,
     completeTask,
     getTaskHistory,
     getEngineerHistory,
@@ -330,6 +331,56 @@ router.post('/tasks/:task_id/accept', authMiddleware, acceptTask);
  *         description: Server error
  */
 router.post('/tasks/:task_id/reject', authMiddleware, rejectTask);
+
+/**
+ * @swagger
+ * /api/app/tasks/{task_id}/wait:
+ *   post:
+ *     summary: Mark task as waiting with reason
+ *     tags: [App-Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: task_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 5-digit Task ID
+ *         example: 12345
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - engineer_id
+ *               - reason
+ *             properties:
+ *               engineer_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               reason:
+ *                 type: string
+ *                 example: "Waiting for customer confirmation"
+ *                 description: Reason for marking task as waiting
+ *     responses:
+ *       200:
+ *         description: Task marked as waiting successfully
+ *       400:
+ *         description: Validation error or invalid task status
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Task not assigned to this engineer
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
 
 /**
  * @swagger

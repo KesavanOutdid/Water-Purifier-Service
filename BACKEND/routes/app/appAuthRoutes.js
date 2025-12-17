@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { login } = require('../../controllers/app/appAuthController');
+const authMiddleware = require('../../middleware/authMiddleware');
+const { login, logout } = require('../../controllers/app/appAuthController');
 
 /**
  * @swagger
@@ -39,8 +40,12 @@ const { login } = require('../../controllers/app/appAuthController');
  *                 example: "eK5...xyz"
  *               deviceInfo:
  *                 type: object
- *                 description: Device information
+ *                 description: Device information (recommended for multi-device support)
  *                 properties:
+ *                   deviceId:
+ *                     type: string
+ *                     example: "unique_device_id_12345"
+ *                     description: Unique device identifier (required for logout by device)
  *                   deviceName:
  *                     type: string
  *                     example: "Samsung Galaxy S21"
@@ -129,5 +134,49 @@ const { login } = require('../../controllers/app/appAuthController');
  *         description: Internal Server Error
  */
 router.post('/login', login);
+
+/**
+ * @swagger
+ * /api/app/auth/logout:
+ *   post:
+ *     summary: User logout (Mobile App) - Removes FCM token
+ *     tags: [App Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fcm_token:
+ *                 type: string
+ *                 description: FCM token to remove
+ *                 example: "eK5...xyz"
+ *               deviceId:
+ *                 type: string
+ *                 description: Device ID to remove (alternative to fcm_token)
+ *                 example: "device_12345"
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Logged out successfully"
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Internal Server Error
+ */
+router.post('/logout', authMiddleware, logout);
 
 module.exports = router;

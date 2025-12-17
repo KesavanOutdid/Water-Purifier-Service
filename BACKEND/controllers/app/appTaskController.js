@@ -292,6 +292,89 @@ const rejectTask = async (req, res) => {
     }
 };
 
+const waitTask = async (req, res) => {
+    try {
+        const { task_id } = req.params;
+        const { engineer_id, reason } = req.body;
+
+        if (!engineer_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'engineer_id is required'
+            });
+        }
+
+        if (!reason) {
+            return res.status(400).json({
+                success: false,
+                message: 'reason is required'
+            });
+        }
+
+        const db = getDB();
+
+        const task = await db.collection('tasks').findOne({ 
+            task_id: parseInt(task_id), 
+            status: true 
+        });
+
+        if (!task) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found'
+            });
+        }
+
+        if (task.assigned_to !== engineer_id) {
+            return res.status(403).json({
+                success: false,
+                message: 'This task is not assigned to you'
+            });
+        }
+
+        if (task.task_status !== 'accepted') {
+            return res.status(400).json({
+                success: false,
+                message: 'Task must be accepted first to mark as waiting'
+            });
+        }
+
+        const historyRecord = {
+            action: 'wait',
+            engineer_id: engineer_id,
+            engineer_name: task.engineer_name,
+            timestamp: new Date(),
+            reason: reason
+        };
+
+        await db.collection('tasks').updateOne(
+            { task_id: parseInt(task_id) },
+            { 
+                $set: {
+                    waiting: true,
+                    waiting_reason: reason,
+                    modified_by: engineer_id,
+                    modified_time: new Date()
+                },
+                $push: { task_history: historyRecord }
+            }
+        );
+
+        await clearCache('tasks:*');
+
+        res.json({
+            success: true,
+            message: 'Task marked as waiting successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error marking task as waiting',
+            error: error.message
+        });
+    }
+};
+
 const completeTask = async (req, res) => {
     try {
         const { task_id } = req.params;
@@ -922,6 +1005,7 @@ module.exports = {
     getTaskById,
     acceptTask,
     rejectTask,
+    waitTask,
     completeTask,
     getTaskHistory,
     getEngineerHistory,

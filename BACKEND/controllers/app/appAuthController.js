@@ -39,23 +39,36 @@ const login = async (req, res) => {
 
         const tokenToSave = fcmToken || fcm_token;
         if (tokenToSave) {
-            const updateData = { 
-                fcm_token: tokenToSave,
-                fcm_token_updated_at: new Date()
-            };
-            
-            if (deviceInfo) {
-                updateData.device_info = {
-                    device_name: deviceInfo.deviceName,
-                    os_version: deviceInfo.osVersion,
-                    app_version: deviceInfo.appVersion,
-                    last_login: new Date()
-                };
-            }
+            const deviceId = deviceInfo?.deviceId || `device_${Date.now()}`;
             
             await db.collection('users').updateOne(
                 { user_id: user.user_id },
-                { $set: updateData }
+                { 
+                    $pull: { 
+                        fcm_tokens: { token: tokenToSave } 
+                    }
+                }
+            );
+
+            const tokenEntry = {
+                token: tokenToSave,
+                device_id: deviceId,
+                device_name: deviceInfo?.deviceName || 'Unknown Device',
+                os_version: deviceInfo?.osVersion || null,
+                app_version: deviceInfo?.appVersion || null,
+                added_at: new Date(),
+                last_active: new Date()
+            };
+
+            await db.collection('users').updateOne(
+                { user_id: user.user_id },
+                { 
+                    $push: { fcm_tokens: tokenEntry },
+                    $set: { 
+                        fcm_token: tokenToSave,
+                        fcm_token_updated_at: new Date() 
+                    }
+                }
             );
         }
 
@@ -108,6 +121,56 @@ const login = async (req, res) => {
     }
 };
 
+const logout = async (req, res) => {
+    try {
+        const { fcm_token, deviceId } = req.body;
+        const userId = req.user?.user_id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+
+        const db = getDB();
+
+        if (fcm_token) {
+            await db.collection('users').updateOne(
+                { user_id: userId },
+                { 
+                    $pull: { 
+                        fcm_tokens: { token: fcm_token } 
+                    }
+                }
+            );
+        } else if (deviceId) {
+            await db.collection('users').updateOne(
+                { user_id: userId },
+                { 
+                    $pull: { 
+                        fcm_tokens: { device_id: deviceId } 
+                    }
+                }
+            );
+        }
+
+        logger.info(`[LOGOUT] User ${userId} logged out, token removed`);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    } catch (error) {
+        logger.error('Logout error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
+    }
+};
+
 module.exports = {
-    login
+    login,
+    logout
 };

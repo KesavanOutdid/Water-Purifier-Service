@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../../middleware/authMiddleware');
 const appTaskRoutes = require('./appTaskRoutes');
 const appSearchRoutes = require('./appSearchRoutes');
+const appPartsRoutes = require('./appPartsRoutes');
 const { uploadProfilePic } = require('../../middleware/uploadMiddleware');
 const {
     getProfile,
@@ -275,5 +276,6 @@ router.get('/profile/picture', authMiddleware, getProfilePicture);
 
 router.use('/', appTaskRoutes);
 router.use('/', appSearchRoutes);
+router.use('/', appPartsRoutes);
 
 module.exports = router;

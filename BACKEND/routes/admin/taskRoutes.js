@@ -10,6 +10,7 @@ const {
     getInstallation,
     assignTask,
     reassignTask,
+    getDevicesForServices,
     getEngineerHistory
 } = require('../../controllers/admin/taskController');
 
@@ -104,6 +105,12 @@ const {
  *                 format: uuid
  *                 example: "7fb95f64-8827-9673-d4gc-3d074g77bgb7"
  *                 description: Local distributor user ID (optional)
+ *               parts:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Filter replacement", "Valve repair"]
+ *                 description: Array of parts required for service (only for service_type 2)
  *               created_by:
  *                 type: string
  *                 example: "admin@example.com"
@@ -182,6 +189,13 @@ const {
  *                       type: string
  *                       nullable: true
  *                       example: "Jane Local Distributor"
+ *                     parts:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       nullable: true
+ *                       example: ["Filter replacement", "Valve repair"]
+ *                       description: Parts required for service (only for service_type 2)
  *                     assigned_to:
  *                       type: string
  *                       format: uuid
@@ -468,6 +482,59 @@ router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('t
 
 /**
  * @swagger
+ * /api/admin/devices/services:
+ *   get:
+ *     summary: Get all allotted devices for services filtered by user level
+ *     description: Returns all devices where allotted is true and status is true, filtered by user role
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *         example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *       - in: query
+ *         name: level
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [admin, distributor, local_distributor]
+ *         description: User level - admin gets all, distributor gets assigned_to, local_distributor gets assigned_to_local
+ *         example: "local_distributor"
+ *     responses:
+ *       200:
+ *         description: Devices fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 count:
+ *                   type: integer
+ *                   example: 25
+ *       400:
+ *         description: Missing or invalid parameters
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/devices/services', authMiddleware, getDevicesForServices);
+
+/**
+ * @swagger
  * /api/admin/tasks/{task_id}:
  *   get:
  *     summary: Get a task by task ID
@@ -553,6 +620,13 @@ router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('t
  *                       type: string
  *                       nullable: true
  *                       example: "Jane Local Distributor"
+ *                     parts:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       nullable: true
+ *                       example: ["Filter replacement", "Valve repair"]
+ *                       description: Parts required for service (only for service_type 2)
  *                     assigned_to:
  *                       type: string
  *                       format: uuid

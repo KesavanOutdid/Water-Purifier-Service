@@ -69,6 +69,8 @@ const assignTaskToEngineer = async (taskId, engineerId, assignedBy, reason = 'au
                 assigned_time: new Date(),
                 task_status: 'assigned',
                 rejection_reason: null,
+                waiting: false,
+                waiting_reason: null,
                 'warnings.acceptance_warning_1': false,
                 'warnings.acceptance_warning_2': false,
                 'warnings.completion_warning_1': false,
@@ -83,8 +85,42 @@ const assignTaskToEngineer = async (taskId, engineerId, assignedBy, reason = 'au
 
     await clearCache('tasks:*');
 
-    if (engineer.fcm_token) {
-        const task = await db.collection('tasks').findOne({ task_id: taskId });
+    const task = await db.collection('tasks').findOne({ task_id: taskId });
+    
+    const tokens = engineer.fcm_tokens?.map(t => t.token).filter(Boolean) || [];
+    if (tokens.length > 0) {
+        const { sendMultipleNotifications } = require('../config/firebase');
+        const response = await sendMultipleNotifications(
+            tokens,
+            'New Task Assigned',
+            `Task #${taskId} has been assigned to you - ${task?.customer_name || 'Customer'}`,
+            {
+                task_id: taskId.toString(),
+                type: 'task_assigned',
+                customer_name: task?.customer_name || '',
+                service_type: task?.service_type?.toString() || ''
+            }
+        ).catch(err => logger.error('[AUTO-ASSIGN] Notification error:', err));
+
+        if (response?.failureCount > 0) {
+            const invalidTokens = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success && 
+                    (resp.error?.code === 'messaging/invalid-registration-token' || 
+                     resp.error?.code === 'messaging/registration-token-not-registered')) {
+                    invalidTokens.push(tokens[idx]);
+                }
+            });
+
+            if (invalidTokens.length > 0) {
+                await db.collection('users').updateOne(
+                    { user_id: engineerId },
+                    { $pull: { fcm_tokens: { token: { $in: invalidTokens } } } }
+                );
+                logger.info(`[AUTO-ASSIGN] Removed ${invalidTokens.length} invalid tokens for engineer ${engineerId}`);
+            }
+        }
+    } else if (engineer.fcm_token) {
         sendNotification(
             engineer.fcm_token,
             'New Task Assigned',
@@ -185,6 +221,11 @@ const reassignTask = async (taskId, reason, excludeEngineer = null) => {
             return { success: false, message: 'Task not found' };
         }
 
+        if (task.waiting === true) {
+            logger.info(`[REASSIGN] Task ${taskId} is in waiting status, skipping auto-reassignment`);
+            return { success: false, message: 'Task is in waiting status, auto-reassignment disabled' };
+        }
+
         if (!task.local_distributor_id) {
             logger.error(`[REASSIGN] Task ${taskId} has no local distributor`);
             return { success: false, message: 'No local distributor assigned to task' };
@@ -255,6 +296,8 @@ const reassignTask = async (taskId, reason, excludeEngineer = null) => {
                     assigned_time: new Date(),
                     task_status: 'assigned',
                     rejection_reason: null,
+                    waiting: false,
+                    waiting_reason: null,
                     'warnings.acceptance_warning_1': false,
                     'warnings.acceptance_warning_2': false,
                     'warnings.completion_warning_1': false,
@@ -268,9 +311,45 @@ const reassignTask = async (taskId, reason, excludeEngineer = null) => {
 
         await clearCache('tasks:*');
 
-        if (availableEngineers[0].fcm_token) {
+        const newEngineer = availableEngineers[0];
+        const tokens = newEngineer.fcm_tokens?.map(t => t.token).filter(Boolean) || [];
+        
+        if (tokens.length > 0) {
+            const { sendMultipleNotifications } = require('../config/firebase');
+            const response = await sendMultipleNotifications(
+                tokens,
+                'Task Reassigned to You',
+                `Task #${taskId} has been reassigned to you - ${task.customer_name}`,
+                {
+                    task_id: taskId.toString(),
+                    type: 'task_reassigned',
+                    customer_name: task.customer_name,
+                    service_type: task.service_type?.toString() || '',
+                    reason: reason
+                }
+            ).catch(err => logger.error('[REASSIGN] Notification error:', err));
+
+            if (response?.failureCount > 0) {
+                const invalidTokens = [];
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success && 
+                        (resp.error?.code === 'messaging/invalid-registration-token' || 
+                         resp.error?.code === 'messaging/registration-token-not-registered')) {
+                        invalidTokens.push(tokens[idx]);
+                    }
+                });
+
+                if (invalidTokens.length > 0) {
+                    await db.collection('users').updateOne(
+                        { user_id: newEngineer.user_id },
+                        { $pull: { fcm_tokens: { token: { $in: invalidTokens } } } }
+                    );
+                    logger.info(`[REASSIGN] Removed ${invalidTokens.length} invalid tokens for engineer ${newEngineer.user_id}`);
+                }
+            }
+        } else if (newEngineer.fcm_token) {
             sendNotification(
-                availableEngineers[0].fcm_token,
+                newEngineer.fcm_token,
                 'Task Reassigned to You',
                 `Task #${taskId} has been reassigned to you - ${task.customer_name}`,
                 {
@@ -283,7 +362,7 @@ const reassignTask = async (taskId, reason, excludeEngineer = null) => {
             ).catch(err => logger.error('[REASSIGN] Notification error:', err));
         }
 
-        logger.info(`[REASSIGN] Task ${taskId} reassigned from ${task.assigned_to} to ${availableEngineers[0].user_id}. Reason: ${reason}`);
+        logger.info(`[REASSIGN] Task ${taskId} reassigned from ${task.assigned_to} to ${newEngineer.user_id}. Reason: ${reason}`);
 
         return {
             success: true,

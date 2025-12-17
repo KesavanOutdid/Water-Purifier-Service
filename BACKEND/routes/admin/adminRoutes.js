@@ -9,6 +9,7 @@ const deviceRoutes = require('./deviceRoutes');
 const taskRoutes = require('./taskRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const searchRoutes = require('./searchRoutes');
+const partsRoutes = require('./partsRoutes');
 
 router.use('/', rolesRoutes);
 router.use('/', adminProfileRoutes);
@@ -19,5 +20,6 @@ router.use('/', deviceRoutes);
 router.use('/', taskRoutes);
 router.use('/', dashboardRoutes);
 router.use('/', searchRoutes);
+router.use('/', partsRoutes);
 
 module.exports = router;
