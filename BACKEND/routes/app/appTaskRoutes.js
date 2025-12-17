@@ -335,7 +335,7 @@ router.post('/tasks/:task_id/reject', authMiddleware, rejectTask);
  * @swagger
  * /api/app/tasks/{task_id}/complete:
  *   post:
- *     summary: Mark task as completed with device allotment and photos (max 3) - Device must be configured first
+ *     summary: Mark task as completed with device allotment and photos (max 3) - MAC ID must be configured first
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
@@ -407,7 +407,7 @@ router.post('/tasks/:task_id/reject', authMiddleware, rejectTask);
  *                           type: string
  *                           format: uuid
  *       400:
- *         description: Validation error or invalid task status or more than 3 photos or device already allotted or device not configured
+ *         description: Validation error or invalid task status or more than 3 photos or device already allotted or MAC ID not configured
  *       401:
  *         description: Unauthorized
  *       403:
@@ -612,20 +612,20 @@ router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats
 
 /**
  * @swagger
- * /api/app/devices/{device_id}/configure:
+ * /api/app/tasks/{task_id}/configure:
  *   post:
- *     summary: Configure device during task (set MAC ID and turn on device before completing task)
+ *     summary: Configure device MAC ID for task (save MAC ID before completing task)
  *     tags: [App-Tasks]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: device_id
+ *         name: task_id
  *         required: true
  *         schema:
- *           type: string
- *         description: Device ID
- *         example: "DEV12345"
+ *           type: integer
+ *         description: 5-digit Task ID
+ *         example: 12345
  *     requestBody:
  *       required: true
  *       content:
@@ -635,7 +635,6 @@ router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats
  *             required:
  *               - engineer_id
  *               - mac_id
- *               - task_id
  *             properties:
  *               engineer_id:
  *                 type: string
@@ -646,13 +645,9 @@ router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats
  *                 type: string
  *                 example: "AA:BB:CC:DD:EE:FF"
  *                 description: Device MAC Address
- *               task_id:
- *                 type: integer
- *                 example: 12345
- *                 description: Associated task ID
  *     responses:
  *       200:
- *         description: Device configured successfully
+ *         description: MAC ID configured successfully
  *         content:
  *           application/json:
  *             schema:
@@ -663,33 +658,30 @@ router.get('/engineer/:engineer_id/dashboard', authMiddleware, getDashboardStats
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Device configured successfully"
+ *                   example: "Device MAC ID configured successfully"
  *                 data:
  *                   type: object
  *                   properties:
- *                     device_id:
- *                       type: string
- *                       example: "DEV12345"
+ *                     task_id:
+ *                       type: integer
+ *                       example: 12345
  *                     mac_id:
  *                       type: string
  *                       example: "AA:BB:CC:DD:EE:FF"
  *                     configured_time:
  *                       type: string
  *                       format: date-time
- *                     configStatus:
- *                       type: boolean
- *                       example: true
  *       400:
- *         description: Validation error or device already configured or task already completed or task not accepted/in_progress
+ *         description: Validation error or MAC ID already set or task already completed or task not accepted/in_progress
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Task not assigned to this engineer or device doesn't belong to task
+ *         description: Task not assigned to this engineer
  *       404:
- *         description: Device or task not found
+ *         description: Task not found
  *       500:
  *         description: Server error
  */
-router.post('/devices/:device_id/configure', authMiddleware, configureDevice);
+router.post('/tasks/:task_id/configure', authMiddleware, configureDevice);
 
 module.exports = router;

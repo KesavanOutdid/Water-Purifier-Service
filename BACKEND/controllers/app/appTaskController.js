@@ -386,10 +386,10 @@ const completeTask = async (req, res) => {
             });
         }
 
-        if (device.configStatus !== true) {
+        if (!task.device_mac_id) {
             return res.status(400).json({
                 success: false,
-                message: 'Device must be configured before completing the task'
+                message: 'Device MAC ID must be configured before completing the task'
             });
         }
 
@@ -411,13 +411,19 @@ const completeTask = async (req, res) => {
             { 
                 $set: {
                     allotted: true,
+                    configStatus: true,
+                    mac_id: task.device_mac_id,
                     customer_name: task.customer_name,
                     customer_phone: task.phone,
                     customer_email: task.email,
                     customer_address: task.address,
                     allotted_by: engineer_id,
                     allotted_time: new Date(),
-                    task_id: task.task_id
+                    configured_by: engineer_id,
+                    configured_time: new Date(),
+                    task_id: task.task_id,
+                    modified_by: engineer_id,
+                    modified_time: new Date()
                 }
             }
         );
@@ -816,8 +822,8 @@ const getDashboardStats = async (req, res) => {
 
 const configureDevice = async (req, res) => {
     try {
-        const { device_id } = req.params;
-        const { engineer_id, mac_id, task_id } = req.body;
+        const { task_id } = req.params;
+        const { engineer_id, mac_id } = req.body;
 
         if (!engineer_id) {
             return res.status(400).json({
@@ -830,13 +836,6 @@ const configureDevice = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'mac_id is required'
-            });
-        }
-
-        if (!task_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'task_id is required'
             });
         }
 
@@ -864,7 +863,7 @@ const configureDevice = async (req, res) => {
         if (task.task_status === 'completed') {
             return res.status(400).json({
                 success: false,
-                message: 'Task is already completed. Device configuration should be done before completion'
+                message: 'Task is already completed'
             });
         }
 
@@ -875,79 +874,37 @@ const configureDevice = async (req, res) => {
             });
         }
 
-        if (!task.device_id) {
+        if (task.device_mac_id) {
             return res.status(400).json({
                 success: false,
-                message: 'No device assigned to this task yet'
+                message: 'Device MAC ID is already set for this task'
             });
         }
-
-        if (task.device_id !== device_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'Device does not belong to this task'
-            });
-        }
-
-        const device = await db.collection('devices').findOne({ 
-            device_id: device_id.toString(),
-            status: true 
-        });
-
-        if (!device) {
-            return res.status(404).json({
-                success: false,
-                message: 'Device not found'
-            });
-        }
-
-        if (device.configStatus === true) {
-            return res.status(400).json({
-                success: false,
-                message: 'Device is already configured'
-            });
-        }
-
-        await db.collection('devices').updateOne(
-            { device_id: device_id.toString() },
-            { 
-                $set: {
-                    configStatus: true,
-                    mac_id: mac_id,
-                    configured_by: engineer_id,
-                    configured_time: new Date(),
-                    modified_by: engineer_id,
-                    modified_time: new Date()
-                }
-            }
-        );
 
         await db.collection('tasks').updateOne(
             { task_id: parseInt(task_id) },
             { 
                 $set: {
-                    device_configured: true,
                     device_mac_id: mac_id,
                     device_configured_time: new Date(),
                     modified_by: engineer_id,
-                    modified_time: new Date()
+                    modified_time: new Date(),
+                    configStatus: true
                 }
             }
         );
 
-        await clearCache('devices:*');
         await clearCache('tasks:*');
 
-        logger.info(`[CONFIGURE-DEVICE] Device ${device_id} configured by engineer ${engineer_id}`);
+        logger.info(`[CONFIGURE-DEVICE] MAC ID ${mac_id} set for task ${task_id} by engineer ${engineer_id}`);
 
         res.json({
             success: true,
-            message: 'Device configured successfully',
+            message: 'Device MAC ID configured successfully',
             data: {
-                device_id,
+                task_id: parseInt(task_id),
                 mac_id,
-                configured_time: new Date(),
-                configStatus: true
+                configured_time: new Date()
             }
         });
     } catch (error) {

@@ -325,9 +325,15 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
         _buildSettingsTile(
-          icon: Icons.visibility_outlined,
-          title: 'Appearance',
-          onTap: () {},
+          icon: Icons.history,
+          title: 'Service History',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ServiceHistoryScreen(),
+              ),
+            );
+          },
         ),
         _buildSettingsTile(
           icon: Icons.lock_outline,
