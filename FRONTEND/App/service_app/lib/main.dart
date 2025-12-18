@@ -9,6 +9,7 @@ import 'screens/service_screen.dart';
 import 'screens/service_history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/help_support_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'services/token_storage.dart';
 import 'services/firebase_service.dart';
 
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
         '/service': (context) => const ServiceScreen(),
         '/service-history': (context) => const ServiceHistoryScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
       },
     );
   }

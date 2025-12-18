@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/service_model.dart';
 import '../services/api_service.dart';
 import '../themes/app_theme.dart';
@@ -390,7 +391,7 @@ class _ServiceScreenState extends State<ServiceScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Task #${task.taskId}',
+                        'Task ID #${task.taskId}',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -434,23 +435,58 @@ class _ServiceScreenState extends State<ServiceScreen>
               ],
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(
-              Icons.location_on,
-              task.address.fullAddress.isEmpty ? 'No address' : task.address.fullAddress,
-            ),
+            _buildAddressRow(task.address),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.phone, task.phone),
+            _buildPhoneRow(task.phone),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.devices, task.modelName),
+            _buildInfoRow(Icons.devices, task.modelName, Colors.orange),
+            if (task.waiting == true && 
+                task.waitingReason != null &&
+                task.waitingReason!.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.amber.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.pending_actions,
+                        size: 14, color: Colors.amber.shade700),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Waiting: ${task.waitingReason}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade900,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _getStatusDateText(task),
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: AppTheme.textSecondaryColor,
+                Flexible(
+                  child: Text(
+                    _getStatusDateText(task),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Icon(Icons.arrow_forward,
@@ -463,10 +499,10 @@ class _ServiceScreenState extends State<ServiceScreen>
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String text, Color iconColor) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppTheme.textSecondaryColor),
+        Icon(icon, size: 16, color: iconColor),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -481,5 +517,130 @@ class _ServiceScreenState extends State<ServiceScreen>
         ),
       ],
     );
+  }
+
+  Widget _buildAddressRow(Address address) {
+    final List<String> addressParts = [];
+    
+    if (address.doorno != null && address.doorno!.isNotEmpty) {
+      addressParts.add('D.No: ${address.doorno}');
+    }
+    if (address.street != null && address.street!.isNotEmpty) {
+      if (addressParts.isNotEmpty) {
+        addressParts[addressParts.length - 1] += ', ${address.street}';
+      } else {
+        addressParts.add(address.street!);
+      }
+    }
+    
+    final List<String> line2Parts = [];
+    if (address.city != null && address.city!.isNotEmpty) {
+      line2Parts.add(address.city!);
+    }
+    if (address.district != null && address.district!.isNotEmpty) {
+      line2Parts.add(address.district!);
+    }
+    if (line2Parts.isNotEmpty) {
+      addressParts.add(line2Parts.join(', '));
+    }
+    
+    final List<String> line3Parts = [];
+    if (address.state != null && address.state!.isNotEmpty) {
+      line3Parts.add(address.state!);
+    }
+    if (address.country != null && address.country!.isNotEmpty) {
+      line3Parts.add(address.country!);
+    }
+    if (address.pincode != null && address.pincode!.isNotEmpty) {
+      if (line3Parts.isNotEmpty) {
+        addressParts.add('${line3Parts.join(', ')} - ${address.pincode}');
+      } else {
+        addressParts.add(address.pincode!);
+      }
+    } else if (line3Parts.isNotEmpty) {
+      addressParts.add(line3Parts.join(', '));
+    }
+    
+    final String displayAddress = addressParts.isNotEmpty 
+        ? addressParts.join('\n') 
+        : 'No address';
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.location_on, size: 16, color: Colors.red),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            displayAddress,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: AppTheme.textSecondaryColor,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneRow(String phone) {
+    return Row(
+      children: [
+        Icon(Icons.phone, size: 16, color: Colors.green),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            phone,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: AppTheme.textSecondaryColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => _makePhoneCall(phone),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(248, 76, 175, 79),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Call',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri.parse('tel:$phoneNumber');
+    try {
+      if (!await launchUrl(
+        phoneUri,
+        mode: LaunchMode.externalApplication,
+      )) {
+        throw 'Could not launch phone dialer';
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertUtils.showErrorAlert(
+          context,
+          title: 'Error',
+          message: 'Could not open phone dialer',
+        );
+      }
+    }
   }
 }

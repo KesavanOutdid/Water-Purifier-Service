@@ -1011,7 +1011,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
             items: const [
               DropdownMenuItem(
                 value: 'auto',
-                child: Text('Auto Select Reset'),
+                child: Text('Reset'),
               ),
               DropdownMenuItem(
                 value: 'factory',
