@@ -124,7 +124,7 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
     try {
         const { fcm_token, deviceId } = req.body;
-        const userId = req.user?.user_id;
+        const userId = req.user_id;
 
         if (!userId) {
             return res.status(401).json({
