@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../models/service_model.dart';
@@ -38,9 +39,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   List<File> selectedPhotos = [];
   String deviceId = '';
   String rejectReason = '';
+  String waitingReason = '';
   bool isLoading = false;
   bool isUploadingPhotos = false;
   String? error;
+  
+  List<Map<String, dynamic>> availableParts = [];
+  List<String> selectedParts = [];
+  bool isLoadingParts = false;
 
   bool _isCustomerExpanded = true;
   bool _isDeviceExpanded = false;
@@ -54,6 +60,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     // 'Other'
   ];
 
+  final List<String> waitingReasons = [
+    'Bluetooth not connected',
+    'Timer not working',
+    'I need some help',
+    'Power not there',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +77,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     );
     _animationController.forward();
     _refreshTaskDetails();
+    _fetchParts();
   }
 
   @override
@@ -238,6 +252,60 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
   }
 
+  Future<void> _markTaskAsWaiting() async {
+    if (waitingReason.isEmpty) {
+      AlertUtils.showWarningAlert(
+        context,
+        title: 'Required',
+        message: 'Please select a waiting reason',
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
+    try {
+      final response = await _apiService.waitTask(
+        currentTask.taskId,
+        widget.engineerId,
+        waitingReason,
+      );
+
+      if (response['success'] == true) {
+        AlertUtils.showSuccessAlert(
+          context,
+          title: 'Success',
+          message: 'Task marked as waiting successfully',
+          onClose: () {
+            widget.onTaskUpdated();
+            Navigator.of(context).pop();
+          },
+        );
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        AlertUtils.showErrorAlert(
+          context,
+          title: 'Error',
+          message: response['message'] ?? 'Failed to mark task as waiting',
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      AlertUtils.showErrorAlert(
+        context,
+        title: 'Error',
+        message: e.toString(),
+      );
+    }
+  }
+
   Future<void> _completeTask() async {
     if (selectedPhotos.isEmpty) {
       AlertUtils.showWarningAlert(
@@ -268,9 +336,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         engineerId: widget.engineerId,
         deviceId: deviceId,
         photos: selectedPhotos,
+        parts: selectedParts.isNotEmpty ? selectedParts : null,
       );
 
       if (response['success'] == true) {
+        selectedParts.clear();
         AlertUtils.showSuccessAlert(
           context,
           title: 'Success',
@@ -540,8 +610,274 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     );
   }
 
+  void _showWaitingDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.pending_actions,
+                      color: Colors.orange, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Reason for Waiting',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: waitingReasons.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == waitingReasons.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTheme.dividerColor),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(Icons.edit, color: Colors.blue),
+                          title: Text(
+                            'Other (Manual Entry)',
+                            style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showManualWaitingReasonDialog();
+                          },
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.dividerColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.check_circle_outline),
+                        title: Text(
+                          waitingReasons[index],
+                          style:
+                              GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            waitingReason = waitingReasons[index];
+                          });
+                          Navigator.pop(context);
+                          _markTaskAsWaiting();
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showManualWaitingReasonDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.edit_note, color: Colors.orange, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Waiting Reason',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.orange.shade900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Please provide a detailed reason for waiting',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: 'Enter your reason here...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.dividerColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.orange, width: 2),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+              style: GoogleFonts.poppins(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey.shade700),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                setState(() {
+                  waitingReason = controller.text;
+                });
+                Navigator.pop(context);
+                _markTaskAsWaiting();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a reason')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Submit',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _fetchParts() async {
+    setState(() {
+      isLoadingParts = true;
+    });
+
+    try {
+      final response = await _apiService.getParts();
+      if (response['success'] == true && response['data'] != null) {
+        setState(() {
+          availableParts = List<Map<String, dynamic>>.from(response['data']);
+          isLoadingParts = false;
+        });
+      } else {
+        setState(() {
+          isLoadingParts = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingParts = false;
+      });
+      print('Error fetching parts: $e');
+    }
+  }
+
+  void _showAddPartDialog(Function(String) onAdd) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Add Part (Others)',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: 'Enter part name...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.poppins()),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                onAdd(controller.text);
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Add', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showCompleteTaskDialog() {
     final deviceIdController = TextEditingController(text: deviceId);
+    
+    selectedParts.clear();
 
     showModalBottomSheet(
       context: context,
@@ -601,6 +937,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 10,
+                          ),
+                          shape: const StadiumBorder(),
+                        ),
                         onPressed: () {
                           _pickImage(
                             ImageSource.camera,
@@ -616,10 +959,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                             },
                           );
                         },
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('Camera'),
+                        icon: const Icon(Icons.camera_alt, color: Colors.white),
+                        label: Text(
+                          'Camera',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                       ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 10,
+                          ),
+                          shape: const StadiumBorder(),
+                        ),
                         onPressed: () {
                           _pickImage(
                             ImageSource.gallery,
@@ -635,8 +991,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                             },
                           );
                         },
-                        icon: const Icon(Icons.image),
-                        label: const Text('Gallery'),
+                        icon: const Icon(Icons.image, color: Colors.white),
+                        label: Text(
+                          'Gallery',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -720,7 +1082,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.qr_code),
+                      icon: const Icon(Icons.qr_code_scanner),
                       onPressed: () async {
                         await _scanQRCode((scannedValue) {
                           deviceIdController.text = scannedValue;
@@ -731,11 +1093,167 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
+                Text(
+                  'Parts Replaced (Optional)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (availableParts.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.dividerColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButton<String>(
+                          isExpanded: true,
+                          hint: Text(
+                            'Select a part',
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
+                          underline: const SizedBox(),
+                          items: availableParts.map((part) {
+                            return DropdownMenuItem<String>(
+                              value: part['name'],
+                              child: Text(
+                                part['name'],
+                                style: GoogleFonts.poppins(fontSize: 13),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null &&
+                                !selectedParts.contains(value)) {
+                              setModalState(() {
+                                selectedParts.add(value);
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.dividerColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add_circle_outline,
+                            size: 18, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Others (Manual Entry)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () {
+                            _showAddPartDialog((partName) {
+                              if (!selectedParts.contains(partName)) {
+                                setModalState(() {
+                                  selectedParts.add(partName);
+                                });
+                              }
+                            });
+                          },
+                          child: Text(
+                            'Add',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selectedParts.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedParts.map((part) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppTheme.primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                part,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    selectedParts.remove(part);
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  child: CustomButton(
-                    text: isLoading ? 'Completing...' : 'Complete Task',
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 14,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
                     onPressed: (selectedPhotos.isNotEmpty &&
                             deviceId.isNotEmpty &&
                             !isLoading &&
@@ -743,7 +1261,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                         ? () {
                             _completeTask();
                           }
-                        : () {},
+                        : null,
+                    child: Text(
+                      isLoading ? 'Completing...' : 'Complete Task',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -829,7 +1354,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 },
                 details: [
                   ('Model', currentTask.modelName),
-                  ('Model ID', currentTask.modelId),
+                  // ('Model ID', currentTask.modelId),
                   (
                     'Service Type',
                     _getServiceTypeName(currentTask.serviceType)
@@ -856,10 +1381,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Task ID', '#${currentTask.taskId}'),
                   ('Engineer', currentTask.engineerName),
                   ('Assigned By', currentTask.assignedBy),
-                  (
-                    'Assigned',
-                    '${_formatDate(currentTask.assignedTime)} • ${_formatTime(currentTask.assignedTime)}'
-                  ),
+                  // (
+                  //   'Assigned',
+                  //   '${_formatDate(currentTask.assignedTime)} • ${_formatTime(currentTask.assignedTime)}'
+                  // ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -961,27 +1486,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.location_on,
-                  size: 16, color: Colors.white.withOpacity(0.8)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  currentTask.address.fullAddress.isEmpty
-                      ? 'No address'
-                      : currentTask.address.fullAddress,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+          // const SizedBox(height: 12),
+          // Row(
+          //   children: [
+          //     Icon(Icons.location_on,
+          //         size: 16, color: Colors.white.withOpacity(0.8)),
+          //     const SizedBox(width: 6),
+          //     Expanded(
+          //       child: Text(
+          //         currentTask.address.fullAddress.isEmpty
+          //             ? 'No address'
+          //             : currentTask.address.fullAddress,
+          //         style: GoogleFonts.poppins(
+          //           fontSize: 13,
+          //           color: Colors.white.withOpacity(0.8),
+          //         ),
+          //         maxLines: 2,
+          //         overflow: TextOverflow.ellipsis,
+          //       ),
+          //     ),
+          //   ],
+          // ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -998,6 +1523,63 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ),
             ],
           ),
+          if (currentTask.waiting == true && 
+              currentTask.waitingReason != null &&
+              currentTask.waitingReason!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.6),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(Icons.pending_actions,
+                        size: 16, color: Colors.white),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Waiting Status',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.85),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          currentTask.waitingReason!,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (currentTask.taskStatus == 'completed' &&
               currentTask.completedTime != null) ...[
             const SizedBox(height: 12),
@@ -1100,15 +1682,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                             color: AppTheme.textPrimaryColor,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isExpanded ? 'Tap to collapse' : 'Tap to expand',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: AppTheme.textSecondaryColor,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
+                        // const SizedBox(height: 2),
+                        // Text(
+                        //   isExpanded ? 'Tap to collapse' : 'Tap to expand',
+                        //   style: GoogleFonts.poppins(
+                        //     fontSize: 11,
+                        //     color: AppTheme.textSecondaryColor,
+                        //     fontWeight: FontWeight.w400,
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -1177,6 +1759,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (label == 'Phone') ...[
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => _makePhoneCall(value),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Call',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1204,31 +1807,43 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   Widget _buildActionButtons() {
     if (currentTask.taskStatus == 'assigned') {
       return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade500,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade500,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
               ),
-              onPressed: isLoading ? null : _showRejectDialog,
-              child: Text(
-                'Reject',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+              shape: const StadiumBorder(), // 👈 pill shape
+            ),
+            onPressed: isLoading ? null : _showRejectDialog,
+            child: Text(
+              'Reject',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: CustomButton(
-              text: 'Accept',
-              onPressed: isLoading ? () {} : _acceptTask,
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              shape: const StadiumBorder(), // 👈 pill shape
+            ),
+            onPressed: isLoading ? null : _acceptTask,
+            child: Text(
+              'Accept',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -1238,17 +1853,72 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           currentTask.configStatus == null || currentTask.configStatus == false;
 
       if (needsConfig) {
-        return CustomButton(
-          text: 'Configure Device',
-          onPressed: isLoading ? () {} : () => _showBluetoothConfigScreen(),
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade600,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                shape: const StadiumBorder(),
+              ),
+              onPressed: isLoading ? null : _showWaitingDialog,
+              child: Text(
+                'Waiting',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                shape: const StadiumBorder(),
+              ),
+              onPressed: isLoading ? null : _showBluetoothConfigScreen,
+              child: Text(
+                'Configure Device',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
         );
       } else {
-        return CustomButton(
-          text: 'Complete Task',
-          onPressed: isLoading ? () {} : _showCompleteTaskDialog,
+        return Center(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 22,
+                vertical: 10,
+              ),
+              shape: const StadiumBorder(),
+            ),
+            onPressed: isLoading ? null : _showCompleteTaskDialog,
+            child: Text(
+              'Complete Task',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
         );
       }
     }
+
     return const SizedBox.shrink();
   }
 
@@ -1333,6 +2003,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         return Colors.green;
       default:
         return Colors.blueGrey;
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri.parse('tel:$phoneNumber');
+    try {
+      if (!await launchUrl(
+        phoneUri,
+        mode: LaunchMode.externalApplication,
+      )) {
+        throw 'Could not launch phone dialer';
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertUtils.showErrorAlert(
+          context,
+          title: 'Error',
+          message: 'Could not open phone dialer',
+        );
+      }
     }
   }
 }

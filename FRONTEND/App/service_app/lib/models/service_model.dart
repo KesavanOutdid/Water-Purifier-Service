@@ -118,6 +118,8 @@ class TaskModel {
   final bool status;
   final String taskStatus;
   bool? configStatus;
+  final bool? waiting;
+  final String? waitingReason;
 
   TaskModel({
     required this.id,
@@ -148,6 +150,8 @@ class TaskModel {
     required this.status,
     required this.taskStatus,
     this.configStatus,
+    this.waiting,
+    this.waitingReason,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -208,6 +212,8 @@ class TaskModel {
       status: json['status'] ?? true,
       taskStatus: status,
       configStatus: json['config_status'] ?? json['configStatus'],
+      waiting: json['waiting'],
+      waitingReason: json['waiting_reason'],
     );
   }
 

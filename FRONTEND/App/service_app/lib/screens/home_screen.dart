@@ -5,6 +5,8 @@ import '../themes/app_theme.dart';
 import '../services/token_storage.dart';
 import '../models/service_model.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -22,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen>
   DashboardAnalytics? _dashboardData;
   String _selectedPeriod = 'today';
   bool _isLoadingDashboard = false;
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
     _animationController.forward();
     _loadUserData();
     _loadDashboardData();
+    _loadNotificationCount();
   }
 
   Future<void> _loadUserData() async {
@@ -58,6 +62,17 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _loadNotificationCount() async {
+    try {
+      final count = await NotificationService.getUnreadCount();
+      setState(() {
+        _unreadNotificationCount = count;
+      });
+    } catch (e) {
+      print('Error loading notification count: $e');
+    }
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -75,18 +90,56 @@ class _HomeScreenState extends State<HomeScreen>
           Padding(
             padding: const EdgeInsets.all(12),
             child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.2),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                ),
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationsScreen(),
+                  ),
+                );
+                _loadNotificationCount();
+              },
+              child: Stack(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.2),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (_unreadNotificationCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          _unreadNotificationCount > 9
+                              ? '9+'
+                              : _unreadNotificationCount.toString(),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -132,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen>
                         'Welcome, $_userName👋',
                         style: GoogleFonts.poppins(
                           fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
                       ),
@@ -140,28 +193,9 @@ class _HomeScreenState extends State<HomeScreen>
                       Text(
                         'Ready to serve and support customers',
                         style: GoogleFonts.poppins(
-                          fontSize: 13,
+                          fontSize: 18,
                           color: Colors.white.withValues(alpha: 0.8),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildStatusCard(
-                            icon: Icons.check_circle,
-                            label: 'Status',
-                            value: 'Active',
-                          ),
-                          const SizedBox(
-                            width: 12,
-                          ),
-                          _buildStatusCard(
-                            icon: Icons.calendar_today,
-                            label: 'Next Service',
-                            value: 'In 10 days',
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -238,7 +272,6 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   const SizedBox(height: 24),
-                  _buildUpcomingSection(),
                 ],
               ),
             ),
@@ -276,48 +309,6 @@ class _HomeScreenState extends State<HomeScreen>
               break;
           }
         },
-      ),
-    );
-  }
-
-  Widget _buildStatusCard({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.white.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -934,136 +925,6 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppTheme.textSecondaryColor,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildUpcomingSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Upcoming Services',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildHorizontalUpcomingCard(
-                  serviceName: 'Monthly\nMaintenance',
-                  customerName: 'Pending',
-                  daysLeft: 'In 10 days',
-                  icon: Icons.build_circle,
-                  color: AppTheme.primaryColor,
-                ),
-                const SizedBox(width: 12),
-                _buildHorizontalUpcomingCard(
-                  serviceName: 'Filter\nReplacement',
-                  customerName: 'Scheduled',
-                  daysLeft: 'In 5 days',
-                  icon: Icons.filter_alt,
-                  color: const Color(0xFF2196F3),
-                ),
-                const SizedBox(width: 12),
-                _buildHorizontalUpcomingCard(
-                  serviceName: 'Quarterly\nInspection',
-                  customerName: 'Pending',
-                  daysLeft: 'In 15 days',
-                  icon: Icons.checklist,
-                  color: const Color(0xFFFF9800),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHorizontalUpcomingCard({
-    required String serviceName,
-    required String customerName,
-    required String daysLeft,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      width: 160,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 45,
-            height: 45,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            serviceName,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            customerName,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              daysLeft,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

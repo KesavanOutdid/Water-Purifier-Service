@@ -145,9 +145,66 @@ class ApiService {
     }
   }
 
-  Future<void> logout() async {
-    await TokenStorage.clearToken();
-    await TokenStorage.clearUser();
+  Future<Map<String, dynamic>> logout({
+    String? fcmToken,
+    String? deviceId,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/auth/logout';
+      
+      final body = <String, dynamic>{};
+      
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        body['fcm_token'] = fcmToken;
+      }
+      
+      if (deviceId != null && deviceId.isNotEmpty) {
+        body['deviceId'] = deviceId;
+      }
+      
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📤 API LOGOUT REQUEST');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('Method: POST');
+      print('Endpoint: $endpoint');
+      print('Authorization: Bearer ${token.substring(0, 20)}...${token.substring(token.length - 10)}');
+      print('Request Body: ${jsonEncode(body)}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        await TokenStorage.clearToken();
+        await TokenStorage.clearUser();
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        await TokenStorage.clearToken();
+        await TokenStorage.clearUser();
+        throw Exception(result['message'] ?? 'Logout failed');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      await TokenStorage.clearToken();
+      await TokenStorage.clearUser();
+      throw Exception('Network error: ${e.toString()}');
+    }
   }
 
   Future<bool> isLoggedIn() async {
@@ -444,11 +501,83 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> waitTask(int taskId, String engineerId, String reason) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/tasks/$taskId/wait';
+      
+      _logRequest('POST', endpoint, body: {'engineer_id': engineerId, 'reason': reason});
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'engineer_id': engineerId, 'reason': reason}),
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Failed to mark task as waiting');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getParts() async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final endpoint = '${dotenv.env['BASE_URL']}${dotenv.env['API_VERSION']}/parts';
+      
+      _logRequest('GET', endpoint);
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        _logResponse('SUCCESS (200)', result);
+        return result;
+      } else {
+        _logResponse('FAILED (${response.statusCode})', result);
+        throw Exception(result['message'] ?? 'Failed to fetch parts');
+      }
+    } catch (e) {
+      _logError(e.toString());
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
   Future<Map<String, dynamic>> completeTask({
     required int taskId,
     required String engineerId,
     required String deviceId,
     required List<File> photos,
+    List<String>? parts,
   }) async {
     try {
       final token = await TokenStorage.getToken();
@@ -462,13 +591,18 @@ class ApiService {
         'task_id': taskId,
         'engineer_id': engineerId,
         'device_id': deviceId,
-        'photos': 'File(s) - ${photos.length} files'
+        'photos': 'File(s) - ${photos.length} files',
+        'parts': parts ?? [],
       });
 
       final request = http.MultipartRequest('POST', Uri.parse(endpoint));
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['engineer_id'] = engineerId;
       request.fields['device_id'] = deviceId;
+      
+      if (parts != null && parts.isNotEmpty) {
+        request.fields['parts'] = jsonEncode(parts);
+      }
 
       for (int i = 0; i < photos.length; i++) {
         final filePath = photos[i].path.toLowerCase();

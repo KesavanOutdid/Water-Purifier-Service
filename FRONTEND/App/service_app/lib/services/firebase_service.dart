@@ -1,11 +1,33 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../firebase_options.dart';
+import 'notification_service.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('🔔 Background message received: ${message.messageId}');
   print('Title: ${message.notification?.title}');
   print('Body: ${message.notification?.body}');
+  
+  await _saveNotificationToStorage(message);
+}
+
+Future<void> _saveNotificationToStorage(RemoteMessage message) async {
+  try {
+    final notification = message.notification;
+    if (notification != null) {
+      final notificationItem = NotificationItem(
+        id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: notification.title ?? 'Notification',
+        body: notification.body ?? '',
+        timestamp: DateTime.now(),
+        data: message.data,
+      );
+      await NotificationService.saveNotification(notificationItem);
+      print('✅ Notification saved to local storage');
+    }
+  } catch (e) {
+    print('❌ Error saving notification to storage: $e');
+  }
 }
 
 class FirebaseService {
@@ -77,11 +99,13 @@ class FirebaseService {
     }
   }
 
-  void _handleForegroundMessage(RemoteMessage message) {
+  void _handleForegroundMessage(RemoteMessage message) async {
     final notification = message.notification;
     if (notification != null) {
       print('Title: ${notification.title}');
       print('Body: ${notification.body}');
+      
+      await _saveNotificationToStorage(message);
     }
   }
 

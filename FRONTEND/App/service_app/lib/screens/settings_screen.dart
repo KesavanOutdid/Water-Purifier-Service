@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import '../themes/app_theme.dart';
 import '../utils/alert_utils.dart';
 import 'privacy_policy_screen.dart';
@@ -11,7 +11,8 @@ import 'help_support_screen.dart';
 import 'edit_profile_screen.dart';
 import 'service_history_screen.dart';
 import '../services/api_service.dart';
-import '../services/token_storage.dart';
+import '../services/notification_service.dart';
+import '../services/firebase_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -46,6 +47,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
     _animationController.forward();
     _loadProfileData();
+    _loadNotificationSettings();
+  }
+
+  Future<void> _loadNotificationSettings() async {
+    final isEnabled = await NotificationService.isNotificationEnabled();
+    setState(() {
+      notificationsEnabled = isEnabled;
+    });
   }
 
   Future<void> _loadProfileData() async {
@@ -176,14 +185,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
+        child: Row(
           children: [
             Stack(
               alignment: Alignment.bottomRight,
               children: [
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
@@ -196,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     child: _profilePicBytes == null
                         ? const Icon(
                             Icons.person,
-                            size: 50,
+                            size: 40,
                             color: Colors.white,
                           )
                         : null,
@@ -205,8 +214,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 GestureDetector(
                   onTap: _isUploadingImage ? null : () => _showImagePickerDialog(),
                   child: Container(
-                    width: 36,
-                    height: 36,
+                    width: 28,
+                    height: 28,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white,
@@ -218,9 +227,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ],
                     ),
                     child: _isUploadingImage
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
+                        ? const Padding(
+                            padding: EdgeInsets.all(6.0),
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
@@ -231,76 +239,83 @@ class _SettingsScreenState extends State<SettingsScreen>
                         : const Icon(
                             Icons.edit,
                             color: AppTheme.primaryColor,
-                            size: 18,
+                            size: 16,
                           ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (_isLoadingProfile)
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 2,
-                ),
-              )
-            else
-              Column(
-                children: [
-                  Text(
-                    _userName,
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+            const SizedBox(width: 16),
+            Expanded(
+              child: _isLoadingProfile
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _userName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _userEmail,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => EditProfileScreen(
+                                  userName: _userName,
+                                  userPhone: _userPhone,
+                                  addressData: _addressData,
+                                ),
+                              ),
+                            ).then((result) {
+                              if (result == true) {
+                                _loadProfileData();
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'Edit Profile',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _userEmail,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => EditProfileScreen(
-                      userName: _userName,
-                      userPhone: _userPhone,
-                      addressData: _addressData,
-                    ),
-                  ),
-                ).then((result) {
-                  if (result == true) {
-                    _loadProfileData();
-                  }
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  'Edit Profile',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -313,19 +328,50 @@ class _SettingsScreenState extends State<SettingsScreen>
       children: [
         _buildSettingsTile(
           icon: Icons.notifications,
+          iconColor: notificationsEnabled ? Colors.orange : Colors.grey,
           title: 'Notifications',
           trailing: Switch(
             value: notificationsEnabled,
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() {
                 notificationsEnabled = value;
               });
+              
+              await NotificationService.setNotificationEnabled(value);
+              
+              final firebaseService = FirebaseService();
+              if (value) {
+                if (firebaseService.isInitialized()) {
+                  final token = await firebaseService.getFCMToken();
+                  print('✅ Notifications enabled. FCM Token: $token');
+                } else {
+                  print('⚠️ Firebase not initialized');
+                }
+              } else {
+                print('🔕 Notifications disabled');
+              }
+              
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      value
+                          ? 'Notifications enabled'
+                          : 'Notifications disabled',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor: AppTheme.successColor,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
             activeThumbColor: AppTheme.primaryColor,
           ),
         ),
         _buildSettingsTile(
           icon: Icons.history,
+          iconColor: Colors.blue,
           title: 'Service History',
           onTap: () {
             Navigator.of(context).push(
@@ -337,6 +383,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         _buildSettingsTile(
           icon: Icons.lock_outline,
+          iconColor: Colors.purple,
           title: 'Privacy & Security',
           onTap: () {
             Navigator.of(context).push(
@@ -348,6 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         _buildSettingsTile(
           icon: Icons.headset_mic_outlined,
+          iconColor: Colors.green,
           title: 'Help and Support',
           onTap: () {
             Navigator.of(context).push(
@@ -359,6 +407,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         _buildSettingsTile(
           icon: Icons.info_outline,
+          iconColor: Colors.teal,
           title: 'About',
           onTap: () {
             _showAboutDialog();
@@ -637,14 +686,50 @@ class _SettingsScreenState extends State<SettingsScreen>
               try {
                 Navigator.pop(dialogContext);
                 
-                await _apiService.logout();
-                await TokenStorage.clearAll();
+                String? fcmToken;
+                String? deviceId;
+                
+                try {
+                  final firebaseService = FirebaseService();
+                  if (firebaseService.isInitialized()) {
+                    fcmToken = await firebaseService.getFCMToken();
+                  }
+                } catch (e) {
+                  print('⚠️ Could not get FCM token: $e');
+                }
+                
+                try {
+                  final deviceInfo = DeviceInfoPlugin();
+                  if (Platform.isAndroid) {
+                    final androidInfo = await deviceInfo.androidInfo;
+                    deviceId = androidInfo.id;
+                  } else if (Platform.isIOS) {
+                    final iosInfo = await deviceInfo.iosInfo;
+                    deviceId = iosInfo.identifierForVendor;
+                  }
+                } catch (e) {
+                  print('⚠️ Could not get device ID: $e');
+                }
+                
+                final result = await _apiService.logout(
+                  fcmToken: fcmToken,
+                  deviceId: deviceId,
+                );
+                
+                try {
+                  final firebaseService = FirebaseService();
+                  if (firebaseService.isInitialized()) {
+                    await firebaseService.deleteToken();
+                  }
+                } catch (e) {
+                  print('⚠️ Could not delete FCM token: $e');
+                }
                 
                 if (mounted) {
                   AlertUtils.showSuccessAlert(
                     context,
                     title: 'Logged Out',
-                    message: 'You have been logged out successfully',
+                    message: result['message'] ?? 'You have been logged out successfully',
                     onClose: () {
                       navigator.pushReplacementNamed('/onboarding');
                     },
@@ -655,7 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   AlertUtils.showErrorAlert(
                     context,
                     title: 'Error',
-                    message: 'Failed to logout: $e',
+                    message: e.toString().replaceFirst('Exception: ', '').replaceFirst('Network error: ', ''),
                   );
                 }
               }
