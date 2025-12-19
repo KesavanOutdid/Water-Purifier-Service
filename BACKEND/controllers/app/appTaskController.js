@@ -64,12 +64,22 @@ const getTasksByEngineer = async (req, res) => {
                 };
             });
 
+        const assignedTasksFiltered = assignedTasks.map(task => {
+            const { waiting, waiting_reason, ...rest } = task;
+            return rest;
+        });
+
+        const completedTasksFiltered = completedTasks.map(task => {
+            const { waiting, waiting_reason, ...rest } = task;
+            return rest;
+        });
+
         res.json({
             success: true,
             data: {
-                assigned: assignedTasks,
+                assigned: assignedTasksFiltered,
                 accepted: acceptedTasks,
-                completed: completedTasks,
+                completed: completedTasksFiltered,
                 rejected: rejectedTasks
             }
         });
@@ -378,19 +388,12 @@ const waitTask = async (req, res) => {
 const completeTask = async (req, res) => {
     try {
         const { task_id } = req.params;
-        const { engineer_id, device_id } = req.body;
+        const { engineer_id, device_id, parts_used } = req.body;
 
         if (!engineer_id) {
             return res.status(400).json({
                 success: false,
                 message: 'engineer_id is required'
-            });
-        }
-
-        if (!device_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'device_id is required'
             });
         }
 
@@ -426,6 +429,74 @@ const completeTask = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Task must be accepted or in progress to be completed'
+            });
+        }
+
+        if (parts_used && !Array.isArray(parts_used)) {
+            return res.status(400).json({
+                success: false,
+                message: 'parts_used must be an array'
+            });
+        }
+
+        const photos = [];
+        if (req.files && req.files.length > 0) {
+            if (req.files.length > 3) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Maximum 3 photos are allowed'
+                });
+            }
+            req.files.forEach(file => {
+                photos.push(file.filename);
+            });
+        }
+
+        const historyRecord = {
+            action: 'complete',
+            engineer_id: engineer_id,
+            engineer_name: task.engineer_name,
+            timestamp: new Date(),
+            reason: null
+        };
+
+        if (task.service_type === 2) {
+            if (task.device_id === "other" || (task.device_id && task.device_id !== "other")) {
+                const updateData = {
+                    task_status: 'completed',
+                    completed_time: new Date(),
+                    completion_photos: photos,
+                    parts_used: parts_used || [],
+                    modified_by: engineer_id,
+                    modified_time: new Date()
+                };
+
+                await db.collection('tasks').updateOne(
+                    { task_id: parseInt(task_id) },
+                    { 
+                        $set: updateData,
+                        $push: { task_history: historyRecord }
+                    }
+                );
+
+                await clearCache('tasks:*');
+
+                return res.json({
+                    success: true,
+                    message: 'Service completed successfully',
+                    data: {
+                        photos: photos,
+                        device_id: task.device_id,
+                        parts_used: parts_used || []
+                    }
+                });
+            }
+        }
+
+        if (!device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id is required for installation'
             });
         }
 
@@ -476,19 +547,6 @@ const completeTask = async (req, res) => {
             });
         }
 
-        const photos = [];
-        if (req.files && req.files.length > 0) {
-            if (req.files.length > 3) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Maximum 3 photos are allowed'
-                });
-            }
-            req.files.forEach(file => {
-                photos.push(file.filename);
-            });
-        }
-
         await db.collection('devices').updateOne(
             { device_id: device_id.toString() },
             { 
@@ -510,14 +568,6 @@ const completeTask = async (req, res) => {
                 }
             }
         );
-
-        const historyRecord = {
-            action: 'complete',
-            engineer_id: engineer_id,
-            engineer_name: task.engineer_name,
-            timestamp: new Date(),
-            reason: null
-        };
 
         const updateData = {
             task_status: 'completed',

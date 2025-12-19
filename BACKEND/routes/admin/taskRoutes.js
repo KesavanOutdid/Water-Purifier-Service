@@ -10,7 +10,6 @@ const {
     getInstallation,
     assignTask,
     reassignTask,
-    getDevicesForServices,
     getEngineerHistory
 } = require('../../controllers/admin/taskController');
 
@@ -41,7 +40,6 @@ const {
  *               - phone
  *               - email
  *               - service_type
- *               - model_id
  *               - created_by
  *             properties:
  *               customer_name:
@@ -89,12 +87,16 @@ const {
  *                 type: integer
  *                 enum: [1, 2]
  *                 example: 2
- *                 description: Type of service - 1 for installation, 2 for services
+ *                 description: Type of service - 1 for installation (requires model_id), 2 for service (requires device_id)
  *               model_id:
  *                 type: string
  *                 format: uuid
  *                 example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
- *                 description: Control model UID
+ *                 description: Control model UID (REQUIRED for service_type = 1 installation)
+ *               device_id:
+ *                 type: string
+ *                 example: "CUST-DEV-123 or 'other'"
+ *                 description: Customer device ID or "other" for external devices (REQUIRED for service_type = 2 service)
  *               distributor_id:
  *                 type: string
  *                 format: uuid
@@ -480,58 +482,7 @@ router.get('/tasks/services', authMiddleware, pagination, cacheMiddleware('tasks
  */
 router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('tasks:installation', 300), getInstallation);
 
-/**
- * @swagger
- * /api/admin/devices/services:
- *   get:
- *     summary: Get all allotted devices for services filtered by user level
- *     description: Returns all devices where allotted is true and status is true, filtered by user role
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: user_id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: User ID
- *         example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
- *       - in: query
- *         name: level
- *         required: true
- *         schema:
- *           type: string
- *           enum: [admin, distributor, local_distributor]
- *         description: User level - admin gets all, distributor gets assigned_to, local_distributor gets assigned_to_local
- *         example: "local_distributor"
- *     responses:
- *       200:
- *         description: Devices fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                 count:
- *                   type: integer
- *                   example: 25
- *       400:
- *         description: Missing or invalid parameters
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.get('/devices/services', authMiddleware, getDevicesForServices);
+
 
 /**
  * @swagger

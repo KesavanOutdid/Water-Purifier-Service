@@ -28,6 +28,8 @@ const createTask = async (req, res) => {
             email,
             service_type,
             model_id,
+            device_id,
+            device_name,
             distributor_id,
             local_distributor_id,
             parts,
@@ -76,6 +78,20 @@ const createTask = async (req, res) => {
             });
         }
 
+        if (service_type === 2 && !device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id is required for service'
+            });
+        }
+
+        if (service_type === 2 && !device_name) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_name is required for service'
+            });
+        }
+
         if (!created_by) {
             return res.status(400).json({
                 success: false,
@@ -102,6 +118,41 @@ const createTask = async (req, res) => {
                 success: false,
                 message: 'Model not found'
             });
+        }
+
+        if (service_type === 2 && device_id !== "other") {
+            const device = await db.collection('devices').findOne({ 
+                device_id: device_id.toString(),
+                status: true 
+            });
+
+            if (!device) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Device not found'
+                });
+            }
+
+            if (device.allotted !== true) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Device must be allotted for service'
+                });
+            }
+
+            if (distributor_id && device.assigned_to !== distributor_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Device distributor does not match task distributor'
+                });
+            }
+
+            if (local_distributor_id && device.assigned_to_local !== local_distributor_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Device local distributor does not match task local distributor'
+                });
+            }
         }
 
         let distributor_name = null;
@@ -154,6 +205,8 @@ const createTask = async (req, res) => {
             service_type,
             model_id,
             model_name: model.name,
+            device_id: service_type === 2 ? device_id : null,
+            device_name: service_type === 2 ? device_name : null,
             distributor_id: distributor_id || null,
             distributor_name: distributor_name,
             local_distributor_id: local_distributor_id || null,
@@ -632,20 +685,25 @@ const reassignTask = async (req, res) => {
 
 const getDevicesForServices = async (req, res) => {
     try {
-        const { user_id, level } = req.query;
+        const { user_id } = req.query;
         const db = getDB();
 
-        if (!user_id || !level) {
+        if (!user_id) {
             return res.status(400).json({
                 success: false,
-                message: 'user_id and level are required'
+                message: 'user_id is required'
             });
         }
 
-        if (!['admin', 'distributor', 'local_distributor'].includes(level)) {
-            return res.status(400).json({
+        const user = await db.collection('users').findOne({ 
+            user_id, 
+            status: true 
+        });
+
+        if (!user) {
+            return res.status(404).json({
                 success: false,
-                message: 'level must be "admin", "distributor", or "local_distributor"'
+                message: 'User not found'
             });
         }
 
@@ -654,9 +712,14 @@ const getDevicesForServices = async (req, res) => {
             status: true
         };
 
-        if (level === 'distributor') {
+        if (user.roles && user.roles.includes(1)) {
+            query = {
+                allotted: true,
+                status: true
+            };
+        } else if (user.roles && user.roles.includes(2)) {
             query.assigned_to = user_id;
-        } else if (level === 'local_distributor') {
+        } else if (user.roles && user.roles.includes(3)) {
             query.assigned_to_local = user_id;
         }
 

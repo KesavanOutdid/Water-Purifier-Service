@@ -406,7 +406,6 @@ router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
  *             type: object
  *             required:
  *               - engineer_id
- *               - device_id
  *             properties:
  *               engineer_id:
  *                 type: string
@@ -415,7 +414,7 @@ router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
  *               device_id:
  *                 type: string
  *                 example: "DEV12345"
- *                 description: Device ID to allot to customer
+ *                 description: Device ID from devices collection (REQUIRED ONLY for installation tasks - service_type 1. NOT required for service tasks with external devices)
  *               photos:
  *                 type: array
  *                 items:
@@ -425,7 +424,7 @@ router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
  *                 description: Task completion photos (maximum 3 images)
  *     responses:
  *       200:
- *         description: Task completed successfully and device allotted to customer
+ *         description: Task completed successfully. For installation - device allotted to customer. For service - task marked complete
  *         content:
  *           application/json:
  *             schema:

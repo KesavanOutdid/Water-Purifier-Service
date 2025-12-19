@@ -15,6 +15,7 @@ const {
     unassignDevice,
     reassignDevice
 } = require('../../controllers/admin/deviceAssignmentController');
+const { getDevicesForServices } = require('../../controllers/admin/taskController');
 
 /**
  * @swagger
@@ -138,6 +139,53 @@ const {
  *         description: Server error
  */
 router.get('/devices', authMiddleware, pagination, cacheMiddleware('devices', 300), getDevices);
+
+/**
+ * @swagger
+ * /api/admin/devices/services:
+ *   get:
+ *     summary: Get all allotted devices for services filtered by user role
+ *     description: Returns all devices where allotted is true and status is true, automatically filtered based on user role (admin gets all, distributor gets assigned_to, local_distributor gets assigned_to_local)
+ *     tags: [Devices]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *         example: "6c69ff7e-7b88-41a1-930a-fa4c544680b0"
+ *     responses:
+ *       200:
+ *         description: Devices fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 count:
+ *                   type: integer
+ *                   example: 25
+ *       400:
+ *         description: Missing user_id parameter
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/devices/services', authMiddleware, getDevicesForServices);
 
 /**
  * @swagger

@@ -25,6 +25,11 @@ const MODULES = [
         module: "Manage Devices",
         actions: ["create", "view", "update", "delete"]
     },
+    // Part Management
+    {
+        module: "Manage Part",
+        actions: ["create", "view", "update", "delete"]
+    },
  
     // TASK MANAGEMENT (MAIN MODULE)
     {
