@@ -20,6 +20,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
   final ApiService _apiService = ApiService();
   late String engineerId;
   String? selectedFilter;
+  int? selectedServiceType;
   bool isLoading = false;
   List<TaskModel> allTasks = [];
   String? error;
@@ -112,7 +113,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -124,10 +125,17 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
   }
 
   List<TaskModel> get filteredTasks {
-    if (selectedFilter == null) {
-      return allTasks;
+    List<TaskModel> filtered = allTasks;
+    
+    if (selectedFilter != null) {
+      filtered = filtered.where((task) => task.taskStatus == selectedFilter).toList();
     }
-    return allTasks.where((task) => task.taskStatus == selectedFilter).toList();
+    
+    if (selectedServiceType != null) {
+      filtered = filtered.where((task) => task.serviceType == selectedServiceType).toList();
+    }
+    
+    return filtered;
   }
 
   Color _getStatusColor(String taskStatus) {
@@ -216,17 +224,28 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
             : Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildServiceTypeChip(1, 'Installation'),
+                              _buildServiceTypeChip(2, 'Service'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Filter by Status',
                               style: GoogleFonts.poppins(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimaryColor,
                               ),
@@ -234,22 +253,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                             Text(
                               '${filteredTasks.length} Tasks',
                               style: GoogleFonts.poppins(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: AppTheme.textSecondaryColor,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
                               _buildFilterChip(null, 'All'),
-                              // _buildFilterChip('created', 'Created'),
-                              // _buildFilterChip('assigned', 'Assigned'),
-                              // _buildFilterChip('accepted', 'Accepted'),
                               _buildFilterChip('completed', 'Completed'),
                               _buildFilterChip('rejected', 'Rejected'),
                             ],
@@ -292,7 +308,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                         : RefreshIndicator(
                             onRefresh: _fetchHistory,
                             child: ListView(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               children: [
                                 ...List.generate(filteredTasks.length, (index) {
                                   return SlideTransition(
@@ -312,7 +328,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                                         ),
                                     child: Padding(
                                       padding: const EdgeInsets.only(
-                                        bottom: 12,
+                                        bottom: 10,
                                       ),
                                       child: GestureDetector(
                                         onTap: () => _showTaskDetails(
@@ -331,6 +347,39 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildServiceTypeChip(int? serviceType, String label) {
+    bool isSelected = selectedServiceType == serviceType;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedServiceType = isSelected ? null : serviceType;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryColor : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -400,7 +449,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -472,6 +521,28 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => _showDetailedHistory(task),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'View Task Details',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -552,6 +623,318 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
     );
   }
 
+  String _getServiceTypeText(int? serviceType) {
+    if (serviceType == 1) return 'Installation';
+    if (serviceType == 2) return 'Service';
+    return 'Unknown';
+  }
+
+  void _showDetailedHistory(TaskModel task) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await _apiService.getEngineerHistory(
+        engineerId: engineerId,
+      );
+
+      Navigator.pop(context);
+
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'];
+        List<dynamic> allTasksList = [];
+        
+        if (data is Map) {
+          ['assigned', 'accepted', 'inProgress', 'completed', 'rejected'].forEach((status) {
+            if (data[status] != null) {
+              allTasksList.addAll(data[status] as List);
+            }
+          });
+        } else if (data is List) {
+          allTasksList = data;
+        }
+
+        final taskDetails = allTasksList.firstWhere(
+          (t) => t['task_id'] == task.taskId,
+          orElse: () => null,
+        );
+
+        if (taskDetails != null) {
+          _showDetailedHistoryBottomSheet(taskDetails);
+        } else {
+          AlertUtils.showErrorAlert(
+            context,
+            title: 'Error',
+            message: 'Task details not found',
+          );
+        }
+      } else {
+        AlertUtils.showErrorAlert(
+          context,
+          title: 'Error',
+          message: 'Failed to load task details',
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      AlertUtils.showErrorAlert(
+        context,
+        title: 'Error',
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
+      );
+    }
+  }
+
+  void _showDetailedHistoryBottomSheet(Map<String, dynamic> taskData) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primaryColor,
+                        AppTheme.primaryColor.withOpacity(0.8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Task Details',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailInfoCard(
+                        icon: Icons.numbers,
+                        iconColor: Colors.blue,
+                        label: 'Task ID',
+                        value: '#${taskData['task_id']}',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDetailInfoCard(
+                        icon: Icons.person,
+                        iconColor: Colors.purple,
+                        label: 'Customer Name',
+                        value: taskData['customer_name'] ?? 'N/A',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDetailInfoCard(
+                        icon: Icons.build,
+                        iconColor: Colors.orange,
+                        label: 'Service Type',
+                        value: _getServiceTypeText(taskData['service_type']),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDetailInfoCard(
+                        icon: Icons.qr_code,
+                        iconColor: Colors.teal,
+                        label: 'Device ID',
+                        value: taskData['device_id'] ?? 'N/A',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildPartsUsedCard(taskData['parts_used']),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Close',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailInfoCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.dividerColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPartsUsedCard(dynamic partsUsed) {
+    String partsText = 'N/A';
+    
+    if (partsUsed != null) {
+      if (partsUsed is List) {
+        partsText = partsUsed.join(', ');
+      } else if (partsUsed is String) {
+        partsText = partsUsed;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.dividerColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.hardware, size: 20, color: Colors.green),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Parts Used',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: AppTheme.textSecondaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  partsText,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showTaskDetails(TaskModel task) {
     showModalBottomSheet(
       context: context,
@@ -568,7 +951,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -583,7 +966,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -591,15 +974,15 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                         child: const Icon(
                           Icons.person_outline,
                           color: Colors.white,
-                          size: 28,
+                          size: 24,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Customer Details',
                           style: GoogleFonts.poppins(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
@@ -608,7 +991,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(10),
@@ -616,7 +999,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                           child: const Icon(
                             Icons.close,
                             color: Colors.white,
-                            size: 20,
+                            size: 18,
                           ),
                         ),
                       ),
@@ -624,7 +1007,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -634,34 +1017,34 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
                         label: 'Task ID',
                         value: '#${task.taskId}',
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildInfoCard(
                         icon: Icons.person,
                         iconColor: Colors.purple,
                         label: 'Customer',
                         value: task.customerName,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildPhoneCard(task.phone),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildInfoCard(
                         icon: Icons.email,
                         iconColor: Colors.orange,
                         label: 'Email',
                         value: task.email,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildInfoCard(
                         icon: Icons.devices,
                         iconColor: Colors.teal,
                         label: 'Device',
                         value: task.modelName,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildStatusCard(task.taskStatus),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildAddressCard(task.address),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
               // if (task.taskHistory.isNotEmpty) ...[
               //   Text(
               //     'Task History',
@@ -717,20 +1100,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
               //   }).toList(),
               // ],
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
+              Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Close',
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -754,7 +1136,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -763,14 +1145,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: iconColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 20, color: iconColor),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +1184,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
 
   Widget _buildPhoneCard(String phone) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -811,14 +1193,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.green.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.phone, size: 20, color: Colors.green),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,7 +1250,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
 
   Widget _buildStatusCard(String status) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -877,7 +1259,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: _getStatusColor(status).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
@@ -888,7 +1270,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
               color: _getStatusColor(status),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +1341,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
         : 'No address';
     
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -969,14 +1351,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.location_on, size: 20, color: Colors.red),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

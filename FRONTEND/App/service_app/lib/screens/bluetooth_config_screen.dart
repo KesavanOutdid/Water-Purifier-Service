@@ -60,7 +60,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
   Map<String, DateTime> deviceDiscoveryTimes = {};
   Map<String, int> deviceRssiValues = {};
   Socket? classicBluetoothSocket;
-  static const int rssiThreshold = -100;
+  static const int rssiThreshold = -70;
   static const Duration scanTimeout = Duration(seconds: 15);
   static const int RFCOMM_UUID_SPP = 1;
   bool isScanning = false;
@@ -273,8 +273,8 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         if (mounted) {
           AlertUtils.showErrorAlert(
             context,
-            title: 'Permission Denied',
-            message: 'Bluetooth permissions are required to scan devices',
+            title: 'Permission Required',
+            message: 'Bluetooth permissions are required. Please grant the required permissions.',
           );
         }
         return;
@@ -355,7 +355,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
       AlertUtils.showErrorAlert(
         context,
         title: 'Scan Error',
-        message: 'Error scanning for devices: $e',
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -384,8 +384,8 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         if (mounted) {
           AlertUtils.showErrorAlert(
             context,
-            title: 'Permission Denied',
-            message: 'Bluetooth permissions are required to connect',
+            title: 'Permission Required',
+            message: 'Bluetooth permissions are required. Please grant the required permissions.',
           );
         }
         return;
@@ -492,7 +492,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         AlertUtils.showErrorAlert(
           context,
           title: 'Connection Failed',
-          message: 'Failed to connect to ${deviceInfo.name}: $e',
+          message: AlertUtils.getUserFriendlyErrorMessage(e),
         );
       }
     }
@@ -566,7 +566,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
                   AlertUtils.showErrorAlert(
                     context,
                     title: 'Configuration Failed',
-                    message: 'Failed to save configuration: $e',
+                    message: AlertUtils.getUserFriendlyErrorMessage(e),
                   );
                 }
               }
@@ -583,7 +583,7 @@ class _BluetoothConfigScreenState extends State<BluetoothConfigScreen> {
         AlertUtils.showErrorAlert(
           context,
           title: 'Reset Failed',
-          message: e.toString(),
+          message: AlertUtils.getUserFriendlyErrorMessage(e),
         );
       }
     }

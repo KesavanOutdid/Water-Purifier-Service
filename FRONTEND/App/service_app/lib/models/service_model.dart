@@ -120,6 +120,10 @@ class TaskModel {
   bool? configStatus;
   final bool? waiting;
   final String? waitingReason;
+  final List<Map<String, dynamic>>? parts;
+  final List<String>? partsUsed;
+  final String? deviceId;
+  final String? deviceName;
 
   TaskModel({
     required this.id,
@@ -152,6 +156,10 @@ class TaskModel {
     this.configStatus,
     this.waiting,
     this.waitingReason,
+    this.parts,
+    this.partsUsed,
+    this.deviceId,
+    this.deviceName,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -214,6 +222,14 @@ class TaskModel {
       configStatus: json['config_status'] ?? json['configStatus'],
       waiting: json['waiting'],
       waitingReason: json['waiting_reason'],
+      parts: json['parts'] != null 
+          ? List<Map<String, dynamic>>.from(json['parts'])
+          : null,
+      partsUsed: json['parts_used'] != null 
+          ? List<String>.from(json['parts_used'])
+          : null,
+      deviceId: json['device_id'],
+      deviceName: json['device_name'],
     );
   }
 

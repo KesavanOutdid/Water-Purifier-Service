@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _errorMessage = AlertUtils.getUserFriendlyErrorMessage(e);
         });
         AlertUtils.showErrorAlert(
           context,

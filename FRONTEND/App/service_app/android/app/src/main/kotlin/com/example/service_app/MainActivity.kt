@@ -37,7 +37,7 @@ class MainActivity : FlutterActivity() {
             val uuidString = call.argument<String>("uuid")
             
             if (address == null || uuidString == null) {
-              result.error("INVALID_ARGS", "Address and UUID are required", null)
+              result.error("INVALID_ARGS", "Device information is missing", null)
               return@setMethodCallHandler
             }
             
@@ -46,7 +46,7 @@ class MainActivity : FlutterActivity() {
             result.success(connectionResult)
           } catch (e: Exception) {
             Log.e(TAG, "Error connecting to Classic Bluetooth: ${e.message}", e)
-            result.error("CONNECTION_ERROR", e.message, null)
+            result.error("CONNECTION_ERROR", "Unable to connect to device", null)
           }
         }
         "disconnectClassicBluetooth" -> {
@@ -56,14 +56,14 @@ class MainActivity : FlutterActivity() {
             result.success(mapOf("success" to true))
           } catch (e: Exception) {
             Log.e(TAG, "Error disconnecting: ${e.message}", e)
-            result.error("DISCONNECT_ERROR", e.message, null)
+            result.error("DISCONNECT_ERROR", "Unable to disconnect from device", null)
           }
         }
         "sendData" -> {
           try {
             val data = call.argument<String>("data")
             if (data == null) {
-              result.error("INVALID_ARGS", "Data is required", null)
+              result.error("INVALID_ARGS", "No data to send", null)
               return@setMethodCallHandler
             }
             
@@ -72,7 +72,7 @@ class MainActivity : FlutterActivity() {
             result.success(mapOf("success" to true))
           } catch (e: Exception) {
             Log.e(TAG, "Error sending data: ${e.message}", e)
-            result.error("SEND_ERROR", e.message, null)
+            result.error("SEND_ERROR", "Failed to send data to device", null)
           }
         }
         "receiveData" -> {
@@ -82,7 +82,7 @@ class MainActivity : FlutterActivity() {
             result.success(mapOf("success" to true, "data" to receivedData))
           } catch (e: Exception) {
             Log.e(TAG, "Error receiving data: ${e.message}", e)
-            result.error("RECEIVE_ERROR", e.message, null)
+            result.error("RECEIVE_ERROR", "Failed to receive data from device", null)
           }
         }
         else -> result.notImplemented()
@@ -134,7 +134,7 @@ class MainActivity : FlutterActivity() {
   private fun connectToClassicBluetooth(address: String, uuidString: String): Map<String, Any> {
     try {
       val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        ?: throw IOException("Bluetooth adapter not available")
+        ?: throw IOException("Bluetooth not available on this device")
 
       disconnectClassicBluetooth()
 
@@ -157,16 +157,16 @@ class MainActivity : FlutterActivity() {
           "address" to address
         )
       } else {
-        throw IOException("Socket connection failed")
+        throw IOException("Unable to establish connection")
       }
     } catch (e: IOException) {
       Log.e(TAG, "IOException during connection: ${e.message}", e)
       disconnectClassicBluetooth()
-      throw e
+      throw IOException("Connection failed")
     } catch (e: SecurityException) {
       Log.e(TAG, "SecurityException during connection: ${e.message}", e)
       disconnectClassicBluetooth()
-      throw e
+      throw SecurityException("Bluetooth permission denied")
     }
   }
 
@@ -186,10 +186,10 @@ class MainActivity : FlutterActivity() {
 
   private fun sendData(data: String) {
     try {
-      val socket = bluetoothSocket ?: throw IOException("Bluetooth socket not connected")
+      val socket = bluetoothSocket ?: throw IOException("Not connected to device")
       
       if (!socket.isConnected) {
-        throw IOException("Socket is not connected")
+        throw IOException("Connection lost")
       }
 
       val outputStream = socket.outputStream
@@ -202,16 +202,16 @@ class MainActivity : FlutterActivity() {
       Log.d(TAG, "Data sent successfully")
     } catch (e: IOException) {
       Log.e(TAG, "Error sending data: ${e.message}", e)
-      throw e
+      throw IOException("Failed to send command")
     }
   }
 
   private fun receiveData(): String {
     try {
-      val socket = bluetoothSocket ?: throw IOException("Bluetooth socket not connected")
+      val socket = bluetoothSocket ?: throw IOException("Not connected to device")
       
       if (!socket.isConnected) {
-        throw IOException("Socket is not connected")
+        throw IOException("Connection lost")
       }
 
       val inputStream = socket.inputStream
@@ -225,11 +225,11 @@ class MainActivity : FlutterActivity() {
         Log.d(TAG, "Received $bytesRead bytes: $receivedData")
         return receivedData
       } else {
-        throw IOException("No data received")
+        throw IOException("Device did not respond")
       }
     } catch (e: IOException) {
       Log.e(TAG, "Error receiving data: ${e.message}", e)
-      throw e
+      throw IOException("Failed to receive response")
     }
   }
 

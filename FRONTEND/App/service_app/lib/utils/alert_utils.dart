@@ -3,6 +3,64 @@ import 'package:google_fonts/google_fonts.dart';
 import '../themes/app_theme.dart';
 
 class AlertUtils {
+  static String getUserFriendlyErrorMessage(dynamic error) {
+    String errorStr = error.toString();
+    
+    errorStr = errorStr
+        .replaceAll(RegExp(r'Exception:\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'PlatformException\([^)]*,\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r',\s*null\s*\)', caseSensitive: false), '')
+        .trim();
+    
+    String lowerStr = errorStr.toLowerCase();
+    
+    if (lowerStr.contains('connection_error') || 
+        lowerStr.contains('socket') || 
+        lowerStr.contains('read failed') ||
+        lowerStr.contains('timeout') ||
+        lowerStr.contains('closed')) {
+      return 'Unable to connect to the device. Please try again.';
+    }
+    
+    if (lowerStr.contains('bluetooth permission') || 
+        (lowerStr.contains('permission') && lowerStr.contains('denied'))) {
+      return 'Permission denied. Please grant the required permissions.';
+    }
+    
+    if (lowerStr.contains('bluetooth') && lowerStr.contains('off')) {
+      return 'Bluetooth is turned off. Please enable Bluetooth.';
+    }
+    
+    if (lowerStr.contains('out of range') || lowerStr.contains('rssi')) {
+      return 'Device is out of range. Please move closer and try again.';
+    }
+    
+    if (lowerStr.contains('no data') || lowerStr.contains('empty')) {
+      return 'No response from device. Please try again.';
+    }
+    
+    if (lowerStr.contains('failed to receive') || lowerStr.contains('no response')) {
+      return 'Device did not respond. Please try again.';
+    }
+    
+    if (lowerStr.contains('device not found')) {
+      return 'Device not found. Please try again.';
+    }
+    
+    if (lowerStr.startsWith('network error:')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    
+    if (lowerStr.contains('already connected')) {
+      return 'Device is already connected.';
+    }
+    
+    if (errorStr.isNotEmpty) {
+      return errorStr;
+    }
+    
+    return 'An error occurred. Please try again later.';
+  }
   static void showSuccessAlert(
     BuildContext context, {
     required String title,

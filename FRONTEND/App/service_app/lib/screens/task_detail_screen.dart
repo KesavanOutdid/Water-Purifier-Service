@@ -50,6 +50,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
 
   bool _isCustomerExpanded = true;
   bool _isDeviceExpanded = false;
+  bool _isServiceInfoExpanded = true;
   bool _isAssignmentExpanded = false;
 
   final List<String> rejectReasons = [
@@ -71,6 +72,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   void initState() {
     super.initState();
     currentTask = widget.task;
+    
+    if (currentTask.serviceType == 2 && currentTask.parts != null) {
+      selectedParts = currentTask.parts!
+          .map((part) => part['part_id'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+    }
+    
+    if (currentTask.deviceId != null && currentTask.deviceId!.isNotEmpty) {
+      deviceId = currentTask.deviceId!;
+    }
+    
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -193,7 +206,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -247,7 +260,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -301,7 +314,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -376,7 +389,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -1354,7 +1367,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 },
                 details: [
                   ('Model', currentTask.modelName),
-                  // ('Model ID', currentTask.modelId),
+                  if (currentTask.deviceId != null && currentTask.deviceId!.isNotEmpty)
+                    ('Device ID', currentTask.deviceId!),
                   (
                     'Service Type',
                     _getServiceTypeName(currentTask.serviceType)
@@ -1363,6 +1377,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   ('Distributor', currentTask.distributorName),
                 ],
               ),
+              if ((currentTask.serviceType == 1 && currentTask.partsUsed != null && currentTask.partsUsed!.isNotEmpty) ||
+                  (currentTask.serviceType == 2 && 
+                  ((currentTask.parts != null && currentTask.parts!.isNotEmpty) ||
+                   (currentTask.partsUsed != null && currentTask.partsUsed!.isNotEmpty)))) ...[
+                const SizedBox(height: 12),
+                _buildServiceInformationSection(),
+              ],
               _buildCollapsibleSection(
                 title: 'Assignment Details',
                 icon: Icons.assignment,
@@ -1618,6 +1639,173 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceInformationSection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.dividerColor, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isServiceInfoExpanded = !_isServiceInfoExpanded;
+                if (_isServiceInfoExpanded) {
+                  _isCustomerExpanded = false;
+                  _isDeviceExpanded = false;
+                  _isAssignmentExpanded = false;
+                }
+              });
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.build_circle,
+                      color: Colors.purple,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Service Information',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _isServiceInfoExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.purple,
+                    size: 26,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isServiceInfoExpanded)
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppTheme.dividerColor,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    currentTask.partsUsed != null && currentTask.partsUsed!.isNotEmpty
+                        ? 'Parts Used/Replaced'
+                        : 'Parts to be Replaced/Serviced',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (currentTask.partsUsed != null && currentTask.partsUsed!.isNotEmpty)
+                    ...currentTask.partsUsed!.map((partName) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.purple.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.purple,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                partName,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList()
+                  else if (currentTask.parts != null && currentTask.parts!.isNotEmpty)
+                    ...currentTask.parts!.map((part) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.purple.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.purple,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                part['part_name'] ?? '',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                ],
+              ),
+            ),
         ],
       ),
     );

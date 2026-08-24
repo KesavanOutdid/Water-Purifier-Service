@@ -11,7 +11,7 @@ class ApiService {
   late String apiVersion;
 
   ApiService() {
-    baseUrl = dotenv.env['BASE_URL'] ?? 'http://192.168.0.32:5000';
+    baseUrl = dotenv.env['BASE_URL'] ?? 'http://192.168.0.11:5000';
     apiVersion = dotenv.env['API_VERSION'] ?? '/api/app';
   }
 
