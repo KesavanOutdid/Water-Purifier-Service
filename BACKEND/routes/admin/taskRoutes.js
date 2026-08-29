@@ -111,11 +111,14 @@ const {
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["Filter replacement", "Valve repair"]
- *                 description: Array of parts required for service (only for service_type 2)
+ *                   format: uuid
+ *                 example: ["6943dcf3700e3b048ec1784f", "6943cb7ca7e60751144b82ab"]
+ *                 description: Array of part IDs (UUID) required for service. System will fetch part names from parts collection and store as array of {part_id, part_name} objects (only for service_type 2)
  *               created_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user creating the task
  *     responses:
  *       201:
  *         description: Task created successfully
@@ -194,10 +197,16 @@ const {
  *                     parts:
  *                       type: array
  *                       items:
- *                         type: string
+ *                         type: object
+ *                         properties:
+ *                           part_id:
+ *                             type: string
+ *                             format: uuid
+ *                           part_name:
+ *                             type: string
  *                       nullable: true
- *                       example: ["Filter replacement", "Valve repair"]
- *                       description: Parts required for service (only for service_type 2)
+ *                       example: [{"part_id": "6943dcf3700e3b048ec1784f", "part_name": "Filter Replacement"}, {"part_id": "6943cb7ca7e60751144b82ab", "part_name": "Valve Repair"}]
+ *                       description: Parts required for service with ID and name (only for service_type 2)
  *                     assigned_to:
  *                       type: string
  *                       format: uuid
@@ -216,12 +225,18 @@ const {
  *                       nullable: true
  *                     created_by:
  *                       type: string
+ *                       format: email
+ *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created the task
  *                     created_time:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified the task
  *                     modified_time:
  *                       type: string
  *                       format: date-time
@@ -574,10 +589,16 @@ router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('t
  *                     parts:
  *                       type: array
  *                       items:
- *                         type: string
+ *                         type: object
+ *                         properties:
+ *                           part_id:
+ *                             type: string
+ *                             format: uuid
+ *                           part_name:
+ *                             type: string
  *                       nullable: true
- *                       example: ["Filter replacement", "Valve repair"]
- *                       description: Parts required for service (only for service_type 2)
+ *                       example: [{"part_id": "6943dcf3700e3b048ec1784f", "part_name": "Filter Replacement"}, {"part_id": "6943cb7ca7e60751144b82ab", "part_name": "Valve Repair"}]
+ *                       description: Parts required for service with ID and name (only for service_type 2)
  *                     assigned_to:
  *                       type: string
  *                       format: uuid
@@ -596,12 +617,18 @@ router.get('/tasks/installation', authMiddleware, pagination, cacheMiddleware('t
  *                       nullable: true
  *                     created_by:
  *                       type: string
+ *                       format: email
+ *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created the task
  *                     created_time:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified the task
  *                     modified_time:
  *                       type: string
  *                       format: date-time
@@ -717,7 +744,9 @@ router.get('/tasks/:task_id', authMiddleware, getTaskById);
  *                 description: Engineer user ID
  *               assigned_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user assigning the task
  *     responses:
  *       200:
  *         description: Task assigned to engineer successfully
@@ -781,7 +810,9 @@ router.post('/tasks/:task_id/assign', authMiddleware, assignTask);
  *                 description: New engineer user ID
  *               assigned_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user reassigning the task
  *     responses:
  *       200:
  *         description: Task reassigned to new engineer successfully

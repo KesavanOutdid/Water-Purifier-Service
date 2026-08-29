@@ -128,9 +128,6 @@ const {
  *                           rejection_reason:
  *                             type: string
  *                             description: Reason provided by engineer for rejection
- *                           task_history:
- *                             type: array
- *                             description: Complete task history including rejection details
  *       401:
  *         description: Unauthorized
  *       500:
@@ -211,23 +208,6 @@ router.get('/engineer/:engineer_id/tasks', authMiddleware, getTasksByEngineer);
  *                     task_status:
  *                       type: string
  *                       enum: [created, assigned, accepted, rejected, in_progress, completed]
- *                     task_history:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           action:
- *                             type: string
- *                           engineer_id:
- *                             type: string
- *                           engineer_name:
- *                             type: string
- *                           timestamp:
- *                             type: string
- *                             format: date-time
- *                           reason:
- *                             type: string
- *                             nullable: true
  *       401:
  *         description: Unauthorized
  *       404:
@@ -415,6 +395,12 @@ router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
  *                 type: string
  *                 example: "DEV12345"
  *                 description: Device ID from devices collection (REQUIRED ONLY for installation tasks - service_type 1. NOT required for service tasks with external devices)
+ *               parts:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Board", "lcd cable", "Filter replacement"]
+ *                 description: Array of part names/descriptions used/installed during task completion. Saves whatever is sent directly without validation
  *               photos:
  *                 type: array
  *                 items:
@@ -444,6 +430,12 @@ router.post('/tasks/:task_id/wait', authMiddleware, waitTask);
  *                       items:
  *                         type: string
  *                       example: ["12345_1702345678901.jpg", "12345_1702345678902.jpg"]
+ *                     parts_used:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Board", "lcd cable", "Filter replacement"]
+ *                       description: Array of parts used/installed (for service tasks)
  *                     device:
  *                       type: object
  *                       properties:

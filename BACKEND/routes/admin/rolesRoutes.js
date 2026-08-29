@@ -64,13 +64,18 @@ const {
  *                         example: "Admin"
  *                       created_by:
  *                         type: string
+ *                         format: email
  *                         example: "admin@example.com"
+ *                         description: Email ID of the user who created the role
  *                       created_time:
  *                         type: string
  *                         format: date-time
  *                       modified_by:
  *                         type: string
+ *                         format: email
  *                         nullable: true
+ *                         example: "modifier@example.com"
+ *                         description: Email ID of the user who last modified the role
  *                       modified_at:
  *                         type: string
  *                         format: date-time
@@ -137,13 +142,18 @@ router.get('/roles', authMiddleware, pagination, cacheMiddleware('roles', 300), 
  *                       example: "Admin"
  *                     created_by:
  *                       type: string
+ *                       format: email
  *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created the role
  *                     created_time:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified the role
  *                     modified_at:
  *                       type: string
  *                       format: date-time
@@ -183,7 +193,9 @@ router.get('/roles/:role_id', authMiddleware, getRoleById);
  *                 example: "Manager"
  *               created_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user creating the role
  *     responses:
  *       201:
  *         description: Role created successfully
@@ -239,7 +251,9 @@ router.post('/roles', authMiddleware, createRole);
  *                 example: "Senior Manager"
  *               modified_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user modifying the role
  *     responses:
  *       200:
  *         description: Role updated successfully

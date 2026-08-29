@@ -65,12 +65,17 @@ const getTasksByEngineer = async (req, res) => {
             });
 
         const assignedTasksFiltered = assignedTasks.map(task => {
-            const { waiting, waiting_reason, ...rest } = task;
+            const { waiting, waiting_reason, task_history, ...rest } = task;
+            return rest;
+        });
+
+        const acceptedTasksFiltered = acceptedTasks.map(task => {
+            const { task_history, ...rest } = task;
             return rest;
         });
 
         const completedTasksFiltered = completedTasks.map(task => {
-            const { waiting, waiting_reason, ...rest } = task;
+            const { waiting, waiting_reason, task_history, ...rest } = task;
             return rest;
         });
 
@@ -78,7 +83,7 @@ const getTasksByEngineer = async (req, res) => {
             success: true,
             data: {
                 assigned: assignedTasksFiltered,
-                accepted: acceptedTasks,
+                accepted: acceptedTasksFiltered,
                 completed: completedTasksFiltered,
                 rejected: rejectedTasks
             }
@@ -109,9 +114,11 @@ const getTaskById = async (req, res) => {
             });
         }
 
+        const { task_history, ...taskData } = task;
+
         res.json({
             success: true,
-            data: task
+            data: taskData
         });
     } catch (error) {
         res.status(500).json({
@@ -388,7 +395,19 @@ const waitTask = async (req, res) => {
 const completeTask = async (req, res) => {
     try {
         const { task_id } = req.params;
-        const { engineer_id, device_id, parts_used } = req.body;
+        let { engineer_id, device_id, parts } = req.body;
+
+        logger.info(`[COMPLETE-TASK] Received body:`, JSON.stringify(req.body));
+        logger.info(`[COMPLETE-TASK] Parts value:`, parts);
+        logger.info(`[COMPLETE-TASK] Parts type:`, typeof parts);
+
+        if (typeof parts === 'string') {
+            try {
+                parts = JSON.parse(parts);
+            } catch (e) {
+                parts = [parts];
+            }
+        }
 
         if (!engineer_id) {
             return res.status(400).json({
@@ -432,7 +451,7 @@ const completeTask = async (req, res) => {
             });
         }
 
-        if (parts_used && !Array.isArray(parts_used)) {
+        if (parts && !Array.isArray(parts)) {
             return res.status(400).json({
                 success: false,
                 message: 'parts_used must be an array'
@@ -466,7 +485,7 @@ const completeTask = async (req, res) => {
                     task_status: 'completed',
                     completed_time: new Date(),
                     completion_photos: photos,
-                    parts_used: parts_used || [],
+                    parts_used: parts || [],
                     modified_by: engineer_id,
                     modified_time: new Date()
                 };
@@ -487,7 +506,7 @@ const completeTask = async (req, res) => {
                     data: {
                         photos: photos,
                         device_id: task.device_id,
-                        parts_used: parts_used || []
+                        parts_used: parts || []
                     }
                 });
             }
@@ -575,6 +594,7 @@ const completeTask = async (req, res) => {
             device_id: device_id.toString(),
             device_name: device.name,
             device_model_id: device.model_id,
+            parts_used: parts || [],
             modified_by: engineer_id,
             modified_time: new Date()
         };
@@ -598,6 +618,7 @@ const completeTask = async (req, res) => {
             message: 'Task completed successfully',
             data: {
                 photos: photos,
+                parts_used: parts || [],
                 device: {
                     device_id: device_id,
                     device_name: device.name,
@@ -1022,7 +1043,8 @@ const configureDevice = async (req, res) => {
                     device_configured_time: new Date(),
                     modified_by: engineer_id,
                     modified_time: new Date(),
-                    configStatus: true
+                    configStatus: true,
+                    waiting: false
                 }
             }
         );

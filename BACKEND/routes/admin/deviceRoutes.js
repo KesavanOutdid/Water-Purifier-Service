@@ -104,13 +104,18 @@ const { getDevicesForServices } = require('../../controllers/admin/taskControlle
  *                         example: "Jane Local Distributor"
  *                       created_by:
  *                         type: string
+ *                         format: email
  *                         example: "admin@example.com"
+ *                         description: Email ID of the user who created the device
  *                       created_time:
  *                         type: string
  *                         format: date-time
  *                       modified_by:
  *                         type: string
+ *                         format: email
  *                         nullable: true
+ *                         example: "modifier@example.com"
+ *                         description: Email ID of the user who last modified the device
  *                       modified_time:
  *                         type: string
  *                         format: date-time
@@ -191,7 +196,7 @@ router.get('/devices/services', authMiddleware, getDevicesForServices);
  * @swagger
  * /api/admin/devices/{device_id}:
  *   get:
- *     summary: Get a device by ID (includes assignment history)
+ *     summary: Get a device by ID (includes assignment history and service history)
  *     tags: [Devices]
  *     security:
  *       - bearerAuth: []
@@ -204,7 +209,7 @@ router.get('/devices/services', authMiddleware, getDevicesForServices);
  *         description: Device ID
  *     responses:
  *       200:
- *         description: Device fetched successfully with assignment history
+ *         description: Device fetched successfully with assignment history and service history timeline
  *         content:
  *           application/json:
  *             schema:
@@ -233,6 +238,35 @@ router.get('/devices/services', authMiddleware, getDevicesForServices);
  *                       items:
  *                         type: object
  *                       description: Complete assignment history of the device
+ *                     service_history:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           service_type:
+ *                             type: string
+ *                             enum: [Installation, Service]
+ *                             example: "Installation"
+ *                           task_id:
+ *                             type: integer
+ *                             example: 12345
+ *                           task_status:
+ *                             type: string
+ *                             example: "completed"
+ *                           engineer_name:
+ *                             type: string
+ *                             example: "John Engineer"
+ *                             nullable: true
+ *                           completed_time:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           parts_used:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             example: ["Board", "lcd cable"]
+ *                       description: Service history timeline sorted by completed_time (old to new) - only completed tasks
  *       401:
  *         description: Unauthorized
  *       404:
@@ -272,7 +306,9 @@ router.get('/devices/:device_id', authMiddleware, getDeviceById);
  *                 description: Control model UID
  *               created_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user creating the device
  *     responses:
  *       201:
  *         description: Device created successfully
@@ -328,7 +364,9 @@ router.post('/devices', authMiddleware, createDevice);
  *                 description: Device status (optional)
  *               modified_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user modifying the device
  *     responses:
  *       200:
  *         description: Device updated successfully

@@ -186,6 +186,23 @@ const createTask = async (req, res) => {
             local_distributor_name = localDistributor.name;
         }
 
+        let partsArray = null;
+        if (service_type === 2 && parts && parts.length > 0) {
+            partsArray = [];
+            for (const partId of parts) {
+                const part = await db.collection('parts').findOne({
+                    part_id: partId,
+                    status: true
+                });
+                if (part) {
+                    partsArray.push({
+                        part_id: partId,
+                        part_name: part.name
+                    });
+                }
+            }
+        }
+
         const task_id = await generateTaskId(db);
 
         const newTask = {
@@ -211,7 +228,7 @@ const createTask = async (req, res) => {
             distributor_name: distributor_name,
             local_distributor_id: local_distributor_id || null,
             local_distributor_name: local_distributor_name,
-            parts: service_type === 2 ? (parts || []) : null,
+            parts: partsArray,
             assigned_to: null,
             engineer_name: null,
             assigned_by: null,

@@ -39,7 +39,9 @@ const {
  *                 example: "Filter replacement"
  *               created_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user creating the part
  *     responses:
  *       201:
  *         description: Part created successfully
@@ -64,12 +66,18 @@ const {
  *                       type: string
  *                     created_by:
  *                       type: string
+ *                       format: email
+ *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created the part
  *                     created_time:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified the part
  *                     modified_time:
  *                       type: string
  *                       format: date-time
@@ -116,12 +124,18 @@ router.post('/parts', authMiddleware, createPart);
  *                         type: string
  *                       created_by:
  *                         type: string
+ *                         format: email
+ *                         example: "admin@example.com"
+ *                         description: Email ID of the user who created the part
  *                       created_time:
  *                         type: string
  *                         format: date-time
  *                       modified_by:
  *                         type: string
+ *                         format: email
  *                         nullable: true
+ *                         example: "modifier@example.com"
+ *                         description: Email ID of the user who last modified the part
  *                       modified_time:
  *                         type: string
  *                         format: date-time
@@ -175,12 +189,18 @@ router.get('/parts', authMiddleware, getParts);
  *                       type: string
  *                     created_by:
  *                       type: string
+ *                       format: email
+ *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created the part
  *                     created_time:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified the part
  *                     modified_time:
  *                       type: string
  *                       format: date-time
@@ -227,7 +247,9 @@ router.get('/parts/:part_id', authMiddleware, getPartById);
  *                 example: "Updated Filter replacement"
  *               modified_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user modifying the part
  *     responses:
  *       200:
  *         description: Part updated successfully
@@ -280,7 +302,9 @@ router.put('/parts/:part_id', authMiddleware, updatePart);
  *             properties:
  *               modified_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user deleting the part
  *     responses:
  *       200:
  *         description: Part deleted successfully

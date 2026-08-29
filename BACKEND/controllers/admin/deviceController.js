@@ -66,9 +66,25 @@ const getDeviceById = async (req, res) => {
             });
         }
 
+        const serviceTasks = await db.collection('tasks').find({
+            device_id: device_id,
+            task_status: 'completed',
+            status: true
+        }).sort({ completed_time: 1 }).toArray();
+
+        const serviceHistory = serviceTasks.map(task => ({
+            service_type: task.service_type === 1 ? 'Installation' : 'Service',
+            task_id: task.task_id,
+            task_status: task.task_status,
+            engineer_name: task.engineer_name || null,
+            completed_time: task.completed_time || null,
+            parts_used: task.parts_used || []
+        }));
+
         const responseData = {
             ...device,
-            assignment_history: device.assignment_history || []
+            assignment_history: device.assignment_history || [],
+            service_history: serviceHistory
         };
 
         res.json({

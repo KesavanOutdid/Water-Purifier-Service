@@ -42,12 +42,18 @@ const { getParts } = require('../../controllers/app/appPartsController');
  *                         example: "Filter replacement"
  *                       created_by:
  *                         type: string
+ *                         format: email
+ *                         example: "admin@example.com"
+ *                         description: Email ID of the user who created the part
  *                       created_time:
  *                         type: string
  *                         format: date-time
  *                       modified_by:
  *                         type: string
+ *                         format: email
  *                         nullable: true
+ *                         example: "modifier@example.com"
+ *                         description: Email ID of the user who last modified the part
  *                       modified_time:
  *                         type: string
  *                         format: date-time

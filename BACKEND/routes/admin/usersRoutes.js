@@ -115,12 +115,18 @@ const {
  *                         example: "Jane Local Distributor"
  *                       created_by:
  *                         type: string
+ *                         format: email
+ *                         example: "admin@example.com"
+ *                         description: Email ID of the user who created this user
  *                       created_at:
  *                         type: string
  *                         format: date-time
  *                       modified_by:
  *                         type: string
+ *                         format: email
  *                         nullable: true
+ *                         example: "modifier@example.com"
+ *                         description: Email ID of the user who last modified this user
  *                       modified_at:
  *                         type: string
  *                         format: date-time
@@ -231,12 +237,18 @@ router.get('/users', authMiddleware, pagination, cacheMiddleware('users', 300), 
  *                       example: "Jane Local Distributor"
  *                     created_by:
  *                       type: string
+ *                       format: email
+ *                       example: "admin@example.com"
+ *                       description: Email ID of the user who created this user
  *                     created_at:
  *                       type: string
  *                       format: date-time
  *                     modified_by:
  *                       type: string
+ *                       format: email
  *                       nullable: true
+ *                       example: "modifier@example.com"
+ *                       description: Email ID of the user who last modified this user
  *                     modified_at:
  *                       type: string
  *                       format: date-time
@@ -326,7 +338,9 @@ router.get('/users/:user_id', authMiddleware, getUserById);
  *                 nullable: true
  *               created_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user creating this user
  *     responses:
  *       201:
  *         description: User created successfully
@@ -422,7 +436,9 @@ router.post('/users', authMiddleware, createUser);
  *                 example: true
  *               modified_by:
  *                 type: string
+ *                 format: email
  *                 example: "admin@example.com"
+ *                 description: Email ID of the user modifying this user
  *     responses:
  *       200:
  *         description: User updated successfully
