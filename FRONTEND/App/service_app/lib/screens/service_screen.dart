@@ -26,6 +26,7 @@ class _ServiceScreenState extends State<ServiceScreen>
   List<TaskModel> allTasks = [];
   String? error;
   String? selectedFilter;
+  int? selectedServiceType;
 
   @override
   void initState() {
@@ -113,7 +114,7 @@ class _ServiceScreenState extends State<ServiceScreen>
       AlertUtils.showErrorAlert(
         context,
         title: 'Error',
-        message: e.toString(),
+        message: AlertUtils.getUserFriendlyErrorMessage(e),
       );
     }
   }
@@ -144,12 +145,50 @@ class _ServiceScreenState extends State<ServiceScreen>
   }
 
   List<TaskModel> get filteredTasks {
-    if (selectedFilter == null) {
-      return allTasks;
+    List<TaskModel> filtered = allTasks;
+    
+    if (selectedFilter != null) {
+      filtered = filtered.where((task) => task.taskStatus == selectedFilter).toList();
     }
-    return allTasks
-        .where((task) => task.taskStatus == selectedFilter)
-        .toList();
+    
+    if (selectedServiceType != null) {
+      filtered = filtered.where((task) => task.serviceType == selectedServiceType).toList();
+    }
+    
+    return filtered;
+  }
+
+  Widget _buildServiceTypeChip(int? serviceType, String label) {
+    bool isSelected = selectedServiceType == serviceType;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedServiceType = isSelected ? null : serviceType;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryColor : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFilterChip(String? status, String label) {
@@ -247,17 +286,28 @@ class _ServiceScreenState extends State<ServiceScreen>
                 : Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildServiceTypeChip(1, 'Installation'),
+                                  _buildServiceTypeChip(2, 'Service'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   'Filter by Status',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.textPrimaryColor,
                                   ),
@@ -265,14 +315,14 @@ class _ServiceScreenState extends State<ServiceScreen>
                                 Text(
                                   '${filteredTasks.length} Tasks',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                     color: AppTheme.textSecondaryColor,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(
@@ -281,7 +331,6 @@ class _ServiceScreenState extends State<ServiceScreen>
                                   _buildFilterChip('assigned', 'Assigned'),
                                   _buildFilterChip('accepted', 'Accepted'),
                                   _buildFilterChip('completed', 'Completed'),
-                                  // _buildFilterChip('rejected', 'Rejected'),
                                 ],
                               ),
                             ),
@@ -319,7 +368,7 @@ class _ServiceScreenState extends State<ServiceScreen>
                             : RefreshIndicator(
                                 onRefresh: _fetchTasks,
                                 child: ListView(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   children: [
                                     ...List.generate(filteredTasks.length, (index) {
                                       return SlideTransition(
@@ -337,7 +386,7 @@ class _ServiceScreenState extends State<ServiceScreen>
                                           ),
                                         ),
                                         child: Padding(
-                                          padding: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.only(bottom: 10),
                                           child: _buildTaskCard(
                                               filteredTasks[index]),
                                         ),
@@ -379,7 +428,7 @@ class _ServiceScreenState extends State<ServiceScreen>
             )
           ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -440,6 +489,57 @@ class _ServiceScreenState extends State<ServiceScreen>
             _buildPhoneRow(task.phone),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.devices, task.modelName, Colors.orange),
+            // if (task.serviceType == 2) ...[
+            //   if (task.partsUsed != null && task.partsUsed!.isNotEmpty) ...[
+            //     const SizedBox(height: 8),
+            //     Wrap(
+            //       spacing: 6,
+            //       runSpacing: 6,
+            //       children: task.partsUsed!.map((partName) {
+            //         return Container(
+            //           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            //           decoration: BoxDecoration(
+            //             color: Colors.purple.withOpacity(0.1),
+            //             borderRadius: BorderRadius.circular(6),
+            //             border: Border.all(color: Colors.purple.withOpacity(0.3)),
+            //           ),
+            //           child: Text(
+            //             partName,
+            //             style: GoogleFonts.poppins(
+            //               fontSize: 11,
+            //               fontWeight: FontWeight.w500,
+            //               color: Colors.purple,
+            //             ),
+            //           ),
+            //         );
+            //       }).toList(),
+            //     ),
+            //   ] else if (task.parts != null && task.parts!.isNotEmpty) ...[
+            //     const SizedBox(height: 8),
+            //     Wrap(
+            //       spacing: 6,
+            //       runSpacing: 6,
+            //       children: task.parts!.map((part) {
+            //         return Container(
+            //           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            //           decoration: BoxDecoration(
+            //             color: Colors.purple.withOpacity(0.1),
+            //             borderRadius: BorderRadius.circular(6),
+            //             border: Border.all(color: Colors.purple.withOpacity(0.3)),
+            //           ),
+            //           child: Text(
+            //             part['part_name'] ?? '',
+            //             style: GoogleFonts.poppins(
+            //               fontSize: 11,
+            //               fontWeight: FontWeight.w500,
+            //               color: Colors.purple,
+            //             ),
+            //           ),
+            //         );
+            //       }).toList(),
+            //     ),
+            //   ],
+            // ],
             if (task.waiting == true && 
                 task.waitingReason != null &&
                 task.waitingReason!.isNotEmpty) ...[

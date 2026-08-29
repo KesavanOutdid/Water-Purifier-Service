@@ -275,7 +275,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         AlertUtils.showErrorAlert(
           context,
           title: 'Error',
-          message: e.toString().replaceFirst('Exception: ', ''),
+          message: AlertUtils.getUserFriendlyErrorMessage(e),
         );
       }
 

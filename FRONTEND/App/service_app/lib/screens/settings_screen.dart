@@ -571,7 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         AlertUtils.showErrorAlert(
           context,
           title: 'Error',
-          message: e.toString().replaceFirst('Exception: ', ''),
+          message: AlertUtils.getUserFriendlyErrorMessage(e),
         );
       }
     } finally {
@@ -740,7 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   AlertUtils.showErrorAlert(
                     context,
                     title: 'Error',
-                    message: e.toString().replaceFirst('Exception: ', '').replaceFirst('Network error: ', ''),
+                    message: AlertUtils.getUserFriendlyErrorMessage(e),
                   );
                 }
               }
