@@ -171,7 +171,6 @@ class _SweetAlertDialog extends StatefulWidget {
   final VoidCallback? onClose;
 
   const _SweetAlertDialog({
-    super.key,
     required this.title,
     required this.message,
     required this.icon,

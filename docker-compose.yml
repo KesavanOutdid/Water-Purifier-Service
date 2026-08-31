@@ -1,0 +1,72 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: water-purifier-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - water-purifier-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: water-purifier-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./BACKEND/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - water-purifier-net
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  admin-frontend:
+    build:
+      context: ./FRONTEND/Admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5001}
+    container_name: water-purifier-admin
+    restart: unless-stopped
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - HOSTNAME=0.0.0.0
+    networks:
+      - water-purifier-net
+    depends_on:
+      - backend
+
+  flutter-builder:
+    profiles:
+      - build-apk
+    build:
+      context: ./FRONTEND/App/service_app
+      dockerfile: Dockerfile
+    container_name: water-purifier-flutter-builder
+    volumes:
+      - ./FRONTEND/App/service_app:/workspace
+    working_dir: /workspace
+
+networks:
+  water-purifier-net:
+    driver: bridge
+
+volumes:
+  redis_data:
