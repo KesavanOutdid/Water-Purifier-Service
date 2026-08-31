@@ -14,7 +14,7 @@ class CustomButton extends StatefulWidget {
   final BorderRadius? borderRadius;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.backgroundColor = AppTheme.primaryColor,
@@ -24,7 +24,7 @@ class CustomButton extends StatefulWidget {
     this.isLoading = false,
     this.icon,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomButton> createState() => _CustomButtonState();
@@ -53,11 +53,11 @@ class _CustomButtonState extends State<CustomButton>
     super.dispose();
   }
 
-  void _onTapDown(_) {
+  void _onTapDown(TapDownDetails details) {
     _animationController.forward();
   }
 
-  void _onTapUp(_) {
+  void _onTapUp(TapUpDetails details) {
     _animationController.reverse();
   }
 
@@ -82,7 +82,7 @@ class _CustomButtonState extends State<CustomButton>
             borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: widget.backgroundColor.withOpacity(0.3),
+                color: widget.backgroundColor.withValues(alpha: 0.3),
                 offset: const Offset(0, 4),
                 blurRadius: 8,
               ),
@@ -109,9 +109,9 @@ class _CustomButtonState extends State<CustomButton>
                       Text(
                         widget.text,
                         style: GoogleFonts.poppins(
-                          color: widget.textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: widget.textColor,
                         ),
                       ),
                     ],

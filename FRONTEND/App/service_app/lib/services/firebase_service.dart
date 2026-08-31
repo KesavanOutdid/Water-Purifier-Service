@@ -113,6 +113,9 @@ class FirebaseService {
     final notification = message.notification;
     final data = message.data;
 
+    if (notification != null) {
+      print('Notification: ${notification.title} - ${notification.body}');
+    }
     print('Message data: $data');
 
     if (data.containsKey('taskId')) {

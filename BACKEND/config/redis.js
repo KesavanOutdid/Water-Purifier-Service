@@ -6,11 +6,15 @@ let redisClient;
 const connectRedis = async () => {
     try {
         redisClient = createClient({
-            url: process.env.REDIS_URL || 'redis://localhost:6379'
+            url: process.env.REDIS_URL || 'redis://localhost:6379',
+            socket: {
+                reconnectStrategy: false
+            }
         });
 
         redisClient.on('error', (err) => {
-            logger.error('Redis Client Error:', err);
+            logger.warn('Redis not available, caching will be bypassed.');
+            redisClient = null;
         });
 
         redisClient.on('connect', () => {
@@ -20,7 +24,8 @@ const connectRedis = async () => {
         await redisClient.connect();
         return redisClient;
     } catch (error) {
-        logger.error('Redis connection error:', error);
+        logger.warn('Redis connection skipped, running without cache.');
+        redisClient = null;
     }
 };
 

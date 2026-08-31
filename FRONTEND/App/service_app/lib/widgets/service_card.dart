@@ -4,40 +4,47 @@ import '../models/service_model.dart';
 import '../themes/app_theme.dart';
 
 class ServiceCard extends StatelessWidget {
-  final ServiceModel service;
+  final TaskModel task;
   final VoidCallback onTap;
 
   const ServiceCard({
-    Key? key,
-    required this.service,
+    super.key,
+    required this.task,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   Color get statusColor {
-    switch (service.status) {
-      case ServiceStatus.pending:
+    switch (task.taskStatus.toLowerCase()) {
+      case 'created':
         return AppTheme.warningColor;
-      case ServiceStatus.scheduled:
+      case 'assigned':
         return AppTheme.primaryColor;
-      case ServiceStatus.inProgress:
+      case 'accepted':
+      case 'in_progress':
+      case 'inprogress':
         return Colors.orange;
-      case ServiceStatus.completed:
+      case 'completed':
         return AppTheme.successColor;
-      case ServiceStatus.cancelled:
+      case 'rejected':
+      case 'cancelled':
         return AppTheme.errorColor;
+      default:
+        return AppTheme.primaryColor;
     }
   }
 
   Icon get typeIcon {
-    switch (service.type) {
-      case ServiceType.maintenance:
-        return const Icon(Icons.build, color: AppTheme.primaryColor);
-      case ServiceType.repair:
-        return const Icon(Icons.handyman, color: AppTheme.primaryColor);
-      case ServiceType.replacement:
-        return const Icon(Icons.cached, color: AppTheme.primaryColor);
-      case ServiceType.installation:
+    switch (task.serviceType) {
+      case 1:
         return const Icon(Icons.construction, color: AppTheme.primaryColor);
+      case 2:
+        return const Icon(Icons.handyman, color: AppTheme.primaryColor);
+      case 3:
+        return const Icon(Icons.cached, color: AppTheme.primaryColor);
+      case 4:
+        return const Icon(Icons.build, color: AppTheme.primaryColor);
+      default:
+        return const Icon(Icons.build, color: AppTheme.primaryColor);
     }
   }
 
@@ -46,6 +53,9 @@ class ServiceCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -59,19 +69,18 @@ class ServiceCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          service.deviceName,
+                          'Task #${task.taskId}',
                           style: GoogleFonts.poppins(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimaryColor,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          service.typeText,
+                          task.customerName,
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: AppTheme.textSecondaryColor,
                           ),
                         ),
@@ -79,16 +88,15 @@ class ServiceCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      service.statusText,
+                      task.taskStatus.toUpperCase(),
                       style: GoogleFonts.poppins(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: statusColor,
                       ),
@@ -96,34 +104,44 @@ class ServiceCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const Divider(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today,
-                          size: 14, color: AppTheme.textSecondaryColor),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${service.scheduledDate.day}/${service.scheduledDate.month}/${service.scheduledDate.year}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: AppTheme.textSecondaryColor,
-                        ),
+                  typeIcon,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      task.modelName.isNotEmpty ? task.modelName : 'Water Purifier',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimaryColor,
                       ),
-                    ],
-                  ),
-                  Text(
-                    '\$${service.cost.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
                     ),
                   ),
                 ],
               ),
+              if (task.address.fullAddress.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        task.address.fullAddress,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
